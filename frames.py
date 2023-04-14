@@ -35,7 +35,6 @@ class InitFrame(Frame):
         super().__init__(FrameType.INIT_CONNECTION)
         self.sender_name = kwargs.get("sender_name")
         self.block_cipher = kwargs.get("block_cipher")
-        self.block_size = kwargs.get("block_size")
         self.key_size = kwargs.get("key_size")
         self.session_key = kwargs.get("session_key")
         self.initial_vector = kwargs.get("initial_vector")

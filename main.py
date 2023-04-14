@@ -11,7 +11,10 @@ while len(session.user_list) < 1:
 time.sleep(5)
 session.send_init(session.user_list[0].name, session.user_list[0].address)
 
-if session.status == SessionStatus.ESTABLISHED:
+while session.status != SessionStatus.ESTABLISHED:
+    time.sleep(1)
+
+while session.status == SessionStatus.ESTABLISHED:
     print("Podaj tresc wiadomosci do wyslania: ")
     msg = input()
     session.send_text_message(msg)

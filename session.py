@@ -7,6 +7,9 @@ from frames import FrameType, FrameFactory
 from enum import IntEnum
 from stoppable_thread import StoppableThread
 from user_info import UserInfo
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
+
 
 DEBUG = True
 BROADCAST_INTERVAL = 5
@@ -32,6 +35,13 @@ class Session:
         self.user_list = []
         self.info = {"user_name": user_name, "mcast_grp": mcast_grp, "mcast_port": mcast_port}
         self.connected_user = None
+        self.cipher_info = {
+            "symmetric_key_len": 0,
+            "block_cipher": "",
+            "session_key": bytes(),
+            "initial_vector": bytes(),
+            "public_key": bytes()
+        }
         self.text_messages = []
         self.file_messages = []
         self.send_broadcast_thread = StoppableThread(self.send_broadcast)
@@ -108,8 +118,9 @@ class Session:
 
     def listen_for_frames(self, stop_event):
         while not stop_event.is_set():
-            frame = utils.get_frame(self.connected_user.client_sock, stop_event, "TCP")
+            frame = utils.get_frame(self.connected_user.sock, stop_event, "TCP")
             if frame is not None:
+                print("got frame")
                 self.handle_frame(frame, stop_event)
 
     def handle_frame(self, frame, stop_event):
@@ -118,9 +129,13 @@ class Session:
                 print("Got init frame")
             self.connected_user.name = frame.sender_name
             self.init_frame_reciv_time = datetime.datetime.now()
+            self.cipher_info["symmetric_key_len"] = frame.key_len
+            self.cipher_info["block_cipher"] = frame.block_cipher
+            self.cipher_info["session_key"] = frame.session_key
+            self.cipher_info["initial_vector"] = frame.initial_vector
             self.status = SessionStatus.WAITING_FOR_ACCEPTANCE
 
-        elif frame.frame_type == FrameType.ACCEPT_CONNECTION and self.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
+        elif frame.frame_type == FrameType.ACCEPT_CONNECTION and self.status == SessionStatus.WAITING_FOR_RESPONSE:
             if frame.response == "ACCEPT":
                 self.status = SessionStatus.ESTABLISHED
                 if DEBUG:
@@ -134,32 +149,38 @@ class Session:
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
             self.text_messages.append(frame.text)
 
+    def send_init(self, name, address, public_key="X", block_cipher="ECB", symmetric_key_len=128):
+        if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
+            raise ValueError('AES key length should be equal to 128 or 192 or 256')
 
+        session_key = get_random_bytes(self.cipher_info["symmetric_key_len"] // 8)
+        initial_vector = get_random_bytes(AES.block_size // 8)
 
-    def send_init_func(self, stop_event, **kwargs):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print(kwargs["address"])
-        sock.connect((kwargs["address"], CONNECTION_PORT))
-        sock.settimeout(INIT_FRAME_TIMEOUT + 2)
+        self.cipher_info["symmetric_key_len"] = symmetric_key_len
+        self.cipher_info["block_cipher"] = block_cipher
+        self.cipher_info["public_key"] = bytes(public_key)
+        self.cipher_info["session_key"] = session_key
+        self.cipher_info["initial_vector"] = initial_vector
 
         frame = FrameFactory.create_frame(FrameType.INIT_CONNECTION, sender_name=self.info["user_name"],
-                                          block_cipher="X", block_size="X", key_size="X", session_key="X",
-                                          initial_vector="X")
+                                          block_cipher=self.cipher_info["block_cipher"],
+                                          key_size=self.cipher_info["symmetric_key_len"], session_key=session_key,
+                                          initial_vector=initial_vector)
 
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((address, CONNECTION_PORT))
+        sock.settimeout(INIT_FRAME_TIMEOUT + 2)
         utils.send_frame(sock, frame)
+
         self.status = SessionStatus.WAITING_FOR_RESPONSE
-        self.connected_user = UserInfo(kwargs["name"], kwargs["address"], sock)
+        self.connected_user = UserInfo(name, address, sock)
         self.listen_frames_thread.thread.start()
 
         if DEBUG:
             print("Init frame sent")
 
-    def send_init(self, name, address):
-        self.init_connection_thread = StoppableThread(self.send_init_func, name=name, address=address)
-        self.init_connection_thread.thread.start()
-
     # TODO: what if second person calls stop_waiting_for_response?
-    def accept(self):
+    def accept(self, public_key="X"):
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
@@ -167,6 +188,7 @@ class Session:
             self.status = SessionStatus.UNESTABLISHED
             raise TimeoutError("Init frame expired")
 
+        self.cipher_info["public_key"] = bytes(public_key)
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", response="ACCEPT")
         utils.send_frame(self.connected_user.sock, frame)
         self.close_broadcast()
@@ -189,5 +211,5 @@ class Session:
         self.connected_user = None
 
     def send_text_message(self, msg):
-        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", text=msg)
+        frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, mac="X", text=msg)
         utils.send_frame(self.connected_user.sock, frame)
