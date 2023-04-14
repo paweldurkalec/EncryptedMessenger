@@ -2,6 +2,7 @@ from user_info import UserInfo
 from frames import FrameFactory
 from threading import Event
 
+
 HEADER_SIZE = 10
 
 
@@ -59,3 +60,6 @@ def get_frame(sock, stop_event=None, protocol="TCP"):
                     return frame
         else:
             return None, None
+
+
+

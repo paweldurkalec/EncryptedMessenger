@@ -3,6 +3,7 @@ import struct
 import time
 import utils
 import datetime
+import crypto
 from frames import FrameType, FrameFactory
 from enum import IntEnum
 from stoppable_thread import StoppableThread
@@ -30,7 +31,7 @@ class SessionStatus(IntEnum):
 
 class Session:
 
-    def __init__(self, user_name, mcast_grp=MCAST_GRP, mcast_port=MCAST_PORT):
+    def __init__(self, user_name, private_key, mcast_grp=MCAST_GRP, mcast_port=MCAST_PORT):
         self.status = SessionStatus.NEW
         self.user_list = []
         self.info = {"user_name": user_name, "mcast_grp": mcast_grp, "mcast_port": mcast_port}
@@ -40,7 +41,8 @@ class Session:
             "block_cipher": "",
             "session_key": bytes(),
             "initial_vector": bytes(),
-            "public_key": bytes()
+            "public_key": bytes(),
+            "private_key": private_key
         }
         self.text_messages = []
         self.file_messages = []
@@ -129,7 +131,7 @@ class Session:
                 print("Got init frame")
             self.connected_user.name = frame.sender_name
             self.init_frame_reciv_time = datetime.datetime.now()
-            self.cipher_info["symmetric_key_len"] = frame.key_len
+            self.cipher_info["symmetric_key_len"] = frame.key_size
             self.cipher_info["block_cipher"] = frame.block_cipher
             self.cipher_info["session_key"] = frame.session_key
             self.cipher_info["initial_vector"] = frame.initial_vector
@@ -147,9 +149,10 @@ class Session:
                 return
 
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
+            self.decrypt_frame(frame)
             self.text_messages.append(frame.text)
 
-    def send_init(self, name, address, public_key="X", block_cipher="ECB", symmetric_key_len=128):
+    def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
             raise ValueError('AES key length should be equal to 128 or 192 or 256')
 
@@ -158,7 +161,7 @@ class Session:
 
         self.cipher_info["symmetric_key_len"] = symmetric_key_len
         self.cipher_info["block_cipher"] = block_cipher
-        self.cipher_info["public_key"] = bytes(public_key)
+        self.cipher_info["public_key"] = public_key
         self.cipher_info["session_key"] = session_key
         self.cipher_info["initial_vector"] = initial_vector
 
@@ -188,7 +191,7 @@ class Session:
             self.status = SessionStatus.UNESTABLISHED
             raise TimeoutError("Init frame expired")
 
-        self.cipher_info["public_key"] = bytes(public_key)
+        self.cipher_info["public_key"] = public_key
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", response="ACCEPT")
         utils.send_frame(self.connected_user.sock, frame)
         self.close_broadcast()
@@ -212,4 +215,18 @@ class Session:
 
     def send_text_message(self, msg):
         frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, mac="X", text=msg)
+        self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
+
+    def encrypt_frame(self, frame):
+        if frame.frame_type == FrameType.TEXT_MESSAGE:
+            frame.mac = crypto.create_mac(frame.text, self.cipher_info["private_key"])
+            frame.text = crypto.encrypt_aes(frame.text, self.cipher_info)
+
+    def decrypt_frame(self, frame):
+        if frame.frame_type == FrameType.TEXT_MESSAGE:
+            frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
+            mac_check = crypto.validate_mac(frame.text, self.cipher_info["public_key"], frame.mac)
+            if not mac_check:
+                print("Podrobili wiadomosc byku")
+
