@@ -11,7 +11,7 @@ def encrypt_aes(message, cipher_info):
     else:
         cipher = AES.new(cipher_info["session_key"], AES.MODE_ECB)
 
-    ciphertext = cipher.encrypt(pad(message, AES.block_size))
+    ciphertext = cipher.encrypt(pad(bytes(message, 'utf-8'), AES.block_size))
     return ciphertext
 
 
@@ -22,7 +22,7 @@ def decrypt_aes(ciphertext, cipher_info):
         cipher = AES.new(cipher_info["session_key"], AES.MODE_ECB)
 
     message = unpad(cipher.decrypt(ciphertext), AES.block_size)
-    return message
+    return message.decode(encoding='utf-8')
 
 
 def encrypt_rsa(message, public_key):
@@ -40,7 +40,7 @@ def decrypt_rsa(ciphertext, private_key):
 
 def create_mac(message, private_key):
     h = SHA224.new()
-    h.update(message)
+    h.update(bytes(message, 'utf-8'))
     byte_hash = h.digest()
     mac = encrypt_rsa(byte_hash, private_key)
     return mac
@@ -48,7 +48,7 @@ def create_mac(message, private_key):
 
 def validate_mac(message, public_key, mac):
     h = SHA224.new()
-    h.update(message)
+    h.update(bytes(message, 'utf-8'))
     byte_hash = h.digest()
     recived_byte_hash = decrypt_rsa(mac, public_key)
 

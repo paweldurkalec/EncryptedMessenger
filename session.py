@@ -156,8 +156,8 @@ class Session:
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
             raise ValueError('AES key length should be equal to 128 or 192 or 256')
 
-        session_key = get_random_bytes(self.cipher_info["symmetric_key_len"] // 8)
-        initial_vector = get_random_bytes(AES.block_size // 8)
+        session_key = get_random_bytes(symmetric_key_len // 8)
+        initial_vector = get_random_bytes(AES.block_size)
 
         self.cipher_info["symmetric_key_len"] = symmetric_key_len
         self.cipher_info["block_cipher"] = block_cipher
@@ -220,13 +220,10 @@ class Session:
 
     def encrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
-            frame.mac = crypto.create_mac(frame.text, self.cipher_info["private_key"])
             frame.text = crypto.encrypt_aes(frame.text, self.cipher_info)
 
     def decrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
-            mac_check = crypto.validate_mac(frame.text, self.cipher_info["public_key"], frame.mac)
-            if not mac_check:
-                print("Podrobili wiadomosc byku")
+
 
