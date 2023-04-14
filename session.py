@@ -36,7 +36,7 @@ class Session:
         self.send_broadcast_thread = StoppableThread(self.send_broadcast)
         self.recive_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
         self.recive_connection_thread = StoppableThread(self.listen_for_connections)
-        self.init_connection_thread = StoppableThread(self.send_init_func)
+        self.init_connection_thread = None
         self.init_frame_reciv_time = None
 
     def open_broadcast(self):
@@ -55,7 +55,7 @@ class Session:
         self.recive_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
         self.recive_connection_thread = StoppableThread(self.listen_for_connections)
 
-    def send_broadcast(self, stop_event):
+    def send_broadcast(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
 
@@ -65,7 +65,7 @@ class Session:
             utils.send_frame(sock, frame, protocol="UDP", info=self.info)
             time.sleep(BROADCAST_INTERVAL)
 
-    def listen_for_broadcasts(self, stop_event):
+    def listen_for_broadcasts(self, stop_event, **kwargs):
         multicast_group = self.info["mcast_grp"]
         server_address = ('', self.info["mcast_port"])
 
@@ -89,7 +89,7 @@ class Session:
                 if user not in self.user_list and user.address != socket.gethostbyname(socket.gethostname()):
                     self.user_list.append(UserInfo(frame.sender_name, address))
 
-    def listen_for_connections(self, stop_event):
+    def listen_for_connections(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('', CONNECTION_PORT))
         sock.listen(5)
@@ -103,7 +103,7 @@ class Session:
             if utils.address_present(self.user_list, others_address):
                 if DEBUG:
                     print(f"Connection from {others_address} has been established!")
-                frame = get_frame(client_sock, stop_event, "TCP")
+                frame = utils.get_frame(client_sock, stop_event, "TCP")
                 if frame is not None and self.status == SessionStatus.UNESTABLISHED:
                     if frame.frame_type == FrameType.INIT_CONNECTION:
                         if DEBUG:
@@ -112,9 +112,9 @@ class Session:
                         self.connected_user = UserInfo(frame.sender_name, others_address, client_sock)
                         self.init_frame_reciv_time = datetime.datetime.now()
 
-    def send_init_func(self, name, address):
+    def send_init_func(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((address, CONNECTION_PORT))
+        sock.connect((kwargs["address"], CONNECTION_PORT))
         sock.settimeout(INIT_FRAME_TIMEOUT + 2)
 
         frame = FrameFactory.create_frame(FrameType.INIT_CONNECTION, sender_name=self.info["user_name"],
@@ -123,9 +123,9 @@ class Session:
 
         utils.send_frame(sock, frame)
         self.status = SessionStatus.WAITING_FOR_RESPONSE
-        self.connected_user = UserInfo(name, address, sock)
+        self.connected_user = UserInfo(kwargs["name"], kwargs["address"], sock)
 
-        frame = get_frame(sock, stop_event, "TCP")
+        frame = utils.get_frame(sock, stop_event, "TCP")
         if frame is not None:
             if frame.frame_type == FrameType.ACCEPT_CONNECTION:
                 if DEBUG:
@@ -137,7 +137,8 @@ class Session:
             self.status = SessionStatus.UNESTABLISHED
             self.connected_user = None
 
-    def send_init(self):
+    def send_init(self, name, address):
+        self.init_connection_thread = StoppableThread(self.send_init_func, name=name, address=address)
         self.init_connection_thread.thread.start()
 
     def accept(self):

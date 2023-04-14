@@ -3,7 +3,7 @@ import time
 import threading
 
 session = Session("PAWEL-LAPCOK")
-session.start()
+session.open_broadcast()
 
 time.sleep(5)
 

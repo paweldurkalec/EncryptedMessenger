@@ -1,5 +1,6 @@
 from user_info import UserInfo
 from frames import FrameFactory
+from threading import Event
 
 HEADER_SIZE = 10
 
@@ -7,7 +8,7 @@ def address_present(user_list, address):
     for user in user_list:
         if user.address == address:
             return True
-    return false
+    return False
 
 def send_frame(sock, frame, protocol="TCP", info=None):
     if protocol not in ["TCP", "UDP"]:
@@ -22,9 +23,12 @@ def send_frame(sock, frame, protocol="TCP", info=None):
     else:
         sock.send(msg)
 
-def get_frame(sock, stop_event, protocol="TCP"):
+def get_frame(sock, stop_event=None, protocol="TCP"):
     if protocol not in ["TCP", "UDP"]:
         raise Exception("Unknown protocol")
+
+    if stop_event is None:
+        stop_event = Event()
 
     full_msg = b''
     new_msg = True
