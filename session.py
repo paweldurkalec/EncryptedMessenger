@@ -97,7 +97,9 @@ class Session:
 
         while not stop_event.is_set():
             try:
-                client_sock, others_address = sock.accept()
+                client_sock, conn_info = sock.accept()
+                others_address = conn_info[0]
+                print(f"Connection from {others_address}")
             except TimeoutError:
                 continue
             if utils.address_present(self.user_list, others_address):
@@ -114,6 +116,7 @@ class Session:
 
     def send_init_func(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(kwargs["address"])
         sock.connect((kwargs["address"], CONNECTION_PORT))
         sock.settimeout(INIT_FRAME_TIMEOUT + 2)
 
@@ -124,6 +127,9 @@ class Session:
         utils.send_frame(sock, frame)
         self.status = SessionStatus.WAITING_FOR_RESPONSE
         self.connected_user = UserInfo(kwargs["name"], kwargs["address"], sock)
+
+        if DEBUG:
+            print("Init frame sent")
 
         frame = utils.get_frame(sock, stop_event, "TCP")
         if frame is not None:

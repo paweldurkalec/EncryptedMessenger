@@ -4,11 +4,13 @@ from threading import Event
 
 HEADER_SIZE = 10
 
+
 def address_present(user_list, address):
     for user in user_list:
         if user.address == address:
             return True
     return False
+
 
 def send_frame(sock, frame, protocol="TCP", info=None):
     if protocol not in ["TCP", "UDP"]:

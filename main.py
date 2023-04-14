@@ -2,13 +2,11 @@ from session import Session
 import time
 import threading
 
-session = Session("PAWEL-LAPCOK")
+session = Session("PAWEL-PC")
 session.open_broadcast()
 
+while len(session.user_list) < 1:
+    time.sleep(1)
+
 time.sleep(5)
-
-print(f"Active threads: {threading.active_count()}")
-
-time.sleep(10)
-
-print(f"Active threads: {threading.active_count()}")
+session.send_init(session.user_list[0].name, session.user_list[0].address)
