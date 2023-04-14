@@ -131,6 +131,11 @@ class Session:
                 stop_event.set()
                 return
 
+        elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
+            self.text_messages.append(frame.text)
+
+
+
     def send_init_func(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print(kwargs["address"])
@@ -182,3 +187,7 @@ class Session:
         self.status = SessionStatus.UNESTABLISHED
         self.listen_frames_thread.stop()
         self.connected_user = None
+
+    def send_text_message(self, msg):
+        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", text=msg)
+        utils.send_frame(self.connected_user.sock, frame)

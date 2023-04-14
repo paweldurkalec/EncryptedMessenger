@@ -14,3 +14,4 @@ session.send_init(session.user_list[0].name, session.user_list[0].address)
 if session.status == SessionStatus.ESTABLISHED:
     print("Podaj tresc wiadomosci do wyslania: ")
     msg = input()
+    session.send_text_message(msg)
