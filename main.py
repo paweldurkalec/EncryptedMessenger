@@ -1,4 +1,4 @@
-from session import Session
+from session import Session, SessionStatus
 import time
 import threading
 
@@ -10,3 +10,7 @@ while len(session.user_list) < 1:
 
 time.sleep(5)
 session.send_init(session.user_list[0].name, session.user_list[0].address)
+
+if session.status == SessionStatus.ESTABLISHED:
+    print("Podaj tresc wiadomosci do wyslania: ")
+    msg = input()

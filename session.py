@@ -16,6 +16,7 @@ MCAST_GRP = '224.1.1.1'
 MCAST_PORT = 5007
 CONNECTION_PORT = 5008
 
+
 class SessionStatus(IntEnum):
     NEW = 0,
     UNESTABLISHED = 1,
@@ -34,8 +35,9 @@ class Session:
         self.text_messages = []
         self.file_messages = []
         self.send_broadcast_thread = StoppableThread(self.send_broadcast)
-        self.recive_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
-        self.recive_connection_thread = StoppableThread(self.listen_for_connections)
+        self.listen_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
+        self.listen_connection_thread = StoppableThread(self.listen_for_connections)
+        self.listen_frames_thread = StoppableThread(self.listen_for_frames)
         self.init_connection_thread = None
         self.init_frame_reciv_time = None
 
@@ -43,17 +45,13 @@ class Session:
         self.user_list = []
         self.status = SessionStatus.UNESTABLISHED
         self.send_broadcast_thread.thread.start()
-        self.recive_broadcast_thread.thread.start()
-        self.recive_connection_thread.thread.start()
+        self.listen_broadcast_thread.thread.start()
+        self.listen_connection_thread.thread.start()
 
     def close_broadcast(self):
         self.send_broadcast_thread.stop()
-        self.recive_broadcast_thread.stop()
-        self.recive_connection_thread.stop()
-
-        self.send_broadcast_thread = StoppableThread(self.send_broadcast)
-        self.recive_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
-        self.recive_connection_thread = StoppableThread(self.listen_for_connections)
+        self.listen_broadcast_thread.stop()
+        self.listen_connection_thread.stop()
 
     def send_broadcast(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -103,16 +101,35 @@ class Session:
             except TimeoutError:
                 continue
             if utils.address_present(self.user_list, others_address):
+                self.connected_user = UserInfo("Unknown", others_address, client_sock)
+                self.listen_frames_thread.thread.start()
                 if DEBUG:
                     print(f"Connection from {others_address} has been established!")
-                frame = utils.get_frame(client_sock, stop_event, "TCP")
-                if frame is not None and self.status == SessionStatus.UNESTABLISHED:
-                    if frame.frame_type == FrameType.INIT_CONNECTION:
-                        if DEBUG:
-                            print("GOT INIT FRAME!!!!")
-                        self.status = SessionStatus.WAITING_FOR_ACCEPTANCE
-                        self.connected_user = UserInfo(frame.sender_name, others_address, client_sock)
-                        self.init_frame_reciv_time = datetime.datetime.now()
+
+    def listen_for_frames(self, stop_event):
+        while not stop_event.is_set():
+            frame = utils.get_frame(self.connected_user.client_sock, stop_event, "TCP")
+            if frame is not None:
+                self.handle_frame(frame, stop_event)
+
+    def handle_frame(self, frame, stop_event):
+        if frame.frame_type == FrameType.INIT_CONNECTION and self.status == SessionStatus.UNESTABLISHED:
+            if DEBUG:
+                print("Got init frame")
+            self.connected_user.name = frame.sender_name
+            self.init_frame_reciv_time = datetime.datetime.now()
+            self.status = SessionStatus.WAITING_FOR_ACCEPTANCE
+
+        elif frame.frame_type == FrameType.ACCEPT_CONNECTION and self.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
+            if frame.response == "ACCEPT":
+                self.status = SessionStatus.ESTABLISHED
+                if DEBUG:
+                    print("Got acceptance, status established")
+            else:
+                self.status = SessionStatus.UNESTABLISHED
+                self.connected_user = None
+                stop_event.set()
+                return
 
     def send_init_func(self, stop_event, **kwargs):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -127,26 +144,16 @@ class Session:
         utils.send_frame(sock, frame)
         self.status = SessionStatus.WAITING_FOR_RESPONSE
         self.connected_user = UserInfo(kwargs["name"], kwargs["address"], sock)
+        self.listen_frames_thread.thread.start()
 
         if DEBUG:
             print("Init frame sent")
-
-        frame = utils.get_frame(sock, stop_event, "TCP")
-        if frame is not None:
-            if frame.frame_type == FrameType.ACCEPT_CONNECTION:
-                if DEBUG:
-                    print("GOT INIT FRAME!!!!")
-                if frame.response == "ACCEPT":
-                    self.status = SessionStatus.ESTABLISHED
-
-        if self.status == SessionStatus.WAITING_FOR_RESPONSE:
-            self.status = SessionStatus.UNESTABLISHED
-            self.connected_user = None
 
     def send_init(self, name, address):
         self.init_connection_thread = StoppableThread(self.send_init_func, name=name, address=address)
         self.init_connection_thread.thread.start()
 
+    # TODO: what if second person calls stop_waiting_for_response?
     def accept(self):
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
@@ -157,8 +164,8 @@ class Session:
 
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", response="ACCEPT")
         utils.send_frame(self.connected_user.sock, frame)
-        self.status = SessionStatus.ESTABLISHED
         self.close_broadcast()
+        self.status = SessionStatus.ESTABLISHED
 
     def decline(self):
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
@@ -168,6 +175,10 @@ class Session:
         utils.send_frame(self.connected_user.sock, frame)
         self.status = SessionStatus.UNESTABLISHED
 
+    def stop_waiting_for_response(self):
+        if self.status != SessionStatus.WAITING_FOR_RESPONSE:
+            raise Exception(f"Status is {self.status} instead of WAITING_FOR_RESPONSE")
 
-
-
+        self.status = SessionStatus.UNESTABLISHED
+        self.listen_frames_thread.stop()
+        self.connected_user = None
