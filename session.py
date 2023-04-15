@@ -109,7 +109,6 @@ class Session:
             try:
                 client_sock, conn_info = sock.accept()
                 others_address = conn_info[0]
-                print(f"Connection from {others_address}")
             except TimeoutError:
                 continue
             if utils.address_present(self.user_list, others_address):
@@ -122,7 +121,8 @@ class Session:
         while not stop_event.is_set():
             frame = utils.get_frame(self.connected_user.sock, stop_event, "TCP")
             if frame is not None:
-                print("got frame")
+                if DEBUG:
+                    print("got frame")
                 self.handle_frame(frame, stop_event)
 
     def handle_frame(self, frame, stop_event):

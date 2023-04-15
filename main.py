@@ -14,6 +14,7 @@ with open('test_private_key.txt', 'rb') as f:
 session = Session("PAWEL-PC", private_key)
 session.open_broadcast()
 
+
 while len(session.user_list) < 1:
     time.sleep(1)
 
@@ -27,4 +28,3 @@ while session.status == SessionStatus.ESTABLISHED:
     print("Podaj tresc wiadomosci do wyslania: ")
     msg = input()
     session.send_text_message(msg)
-
