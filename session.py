@@ -126,6 +126,7 @@ class Session:
                 self.handle_frame(frame, stop_event)
 
     def handle_frame(self, frame, stop_event):
+        self.decrypt_frame(frame)
         if frame.frame_type == FrameType.INIT_CONNECTION and self.status == SessionStatus.UNESTABLISHED:
             if DEBUG:
                 print("Got init frame")
@@ -149,7 +150,6 @@ class Session:
                 return
 
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
-            self.decrypt_frame(frame)
             self.text_messages.append(frame.text)
 
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
@@ -170,6 +170,7 @@ class Session:
                                           key_size=self.cipher_info["symmetric_key_len"], session_key=session_key,
                                           initial_vector=initial_vector)
 
+        self.encrypt_frame(frame)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((address, CONNECTION_PORT))
         sock.settimeout(INIT_FRAME_TIMEOUT + 2)
@@ -183,7 +184,7 @@ class Session:
             print("Init frame sent")
 
     # TODO: what if second person calls stop_waiting_for_response?
-    def accept(self, public_key="X"):
+    def accept(self, public_key):
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
@@ -222,8 +223,14 @@ class Session:
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.encrypt_aes(frame.text, self.cipher_info)
 
+        elif frame.frame_type == FrameType.INIT_CONNECTION:
+            frame.session_key = crypto.encrypt_rsa(frame.session_key, self.cipher_info["public_key"])
+
     def decrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
+
+        elif frame.frame_type == FrameType.INIT_CONNECTION:
+            frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
 
 
