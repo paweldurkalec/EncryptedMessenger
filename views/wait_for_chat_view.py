@@ -6,6 +6,7 @@ from session import Session, SessionStatus
 from stoppable_thread import StoppableThread
 from views.basic_view import BasicView
 from views.chat_view import ChatView
+from views.choose_encription_and_key import ChooseEncriptionAndKey
 
 
 class WaitForChatView(BasicView):
@@ -20,9 +21,10 @@ class WaitForChatView(BasicView):
         self.private_key = private_key
         self.listbox = None
         self.place_for_users = None
-        self.online_users = session.user_list
+        self.online_users = self.session.user_list
         self.display_widgets()
-
+        self.thread = StoppableThread(self.check_users_actions)
+        self.thread.thread.start()
 
     def display_widgets(self):
         label = tk.Label(self.root, image=self.images['back_arrow'], bd=0)
@@ -33,8 +35,6 @@ class WaitForChatView(BasicView):
         self.place_for_users.pack_propagate(0)
         self.place_for_users.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.display_online_users()
-        self.thread = StoppableThread(self.check_users_actions)
-        self.thread.thread.start()
 
     def initialize_session(self, private_key, name):
         session = Session(name, private_key)
@@ -48,21 +48,21 @@ class WaitForChatView(BasicView):
             self.session.accept()
             self.switch_to_chat()
 
-
-    def check_users_actions(self):
-        if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
-            self.answer_to_invitation()
-        online_users = self.session.user_list
-        if online_users != self.online_users:
-            self.online_users = online_users
-            self.refresh_place_for_users()
-            self.display_online_users()
-        sleep(1)
+    def check_users_actions(self, stop_event, **kwargs):
+        while not stop_event.is_set():
+            if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
+                self.answer_to_invitation()
+            online_users = self.session.user_list
+            if online_users != self.online_users:
+                self.online_users = online_users
+                self.refresh_place_for_users()
+                self.display_online_users()
+            sleep(1)
 
     def display_online_users(self):
         self.listbox = tk.Listbox(self.place_for_users, justify="center", font=self.BUTTON_FONT)
-        for item in ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"]:
-            self.listbox.insert(tk.END, item)
+        for user in self.online_users:
+            self.listbox.insert(tk.END, user.name)
 
         scrollbar = ttk.Scrollbar(self.place_for_users, orient=tk.VERTICAL, command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=scrollbar.set)
@@ -76,15 +76,24 @@ class WaitForChatView(BasicView):
             widget.destroy()
 
     def handle_double_click(self, event):
-        # get the selected item from the listbox
         selection = self.listbox.curselection()
         if len(selection) == 1:
             index = selection[0]
-            item = self.listbox.get(index)
-            print(f"You double clicked {item}")
+            user_name = self.listbox.get(index)
+            for user in self.session.user_list:
+                if user.name == user_name:
+                    self.session.send_init(user.name, user.address, public_key=self.public_key)
+                    self.switch_to_choose_encription()
+                    break
 
     def switch_to_chat(self):
         self.thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
         ChatView(self.root, self.private_key, self.public_key, self.name, self.images)
+
+    def switch_to_choose_encription(self):
+        self.thread.stop()
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        ChooseEncriptionAndKey(self.root, self.private_key, self.public_key, self.name, self.images)

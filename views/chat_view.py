@@ -60,15 +60,16 @@ class ChatView(BasicView):
         self.text_input.set('')
         self.display_message(text, self.MY_COLOR)
 
-    def chat_with_connected_user(self):
-        if self.session.status == SessionStatus.UNESTABLISHED:
-            return # dont know what to do
-        messages = self.session.text_messages
-        if self.displayed_messages != messages:
-            self.semaphore.acquire()
-            for i in range(len(self.displayed_messages), len(messages)):
-                self.display_message(messages[i], self.CONNECTED_USER_COLOR)
-            self.semaphore.release()
+    def chat_with_connected_user(self, stop_event, **kwargs):
+        while not stop_event.is_set():
+            if self.session.status == SessionStatus.UNESTABLISHED:
+                return # dont know what to do
+            messages = self.session.text_messages
+            if self.displayed_messages != messages:
+                self.semaphore.acquire()
+                for i in range(len(self.displayed_messages), len(messages)):
+                    self.display_message(messages[i], self.CONNECTED_USER_COLOR)
+                self.semaphore.release()
 
     def display_message(self, text, color):
         tk.Label(self.place_for_text_messages, text="text", bg=color).pack()
