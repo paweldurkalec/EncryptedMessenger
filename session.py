@@ -4,7 +4,7 @@ import time
 import utils
 import datetime
 import crypto
-from frames import FrameType, FrameFactory
+from frames import FrameType, FrameFactory, Frame
 from enum import IntEnum
 from stoppable_thread import StoppableThread
 from user_info import UserInfo
@@ -120,7 +120,7 @@ class Session:
     def listen_for_frames(self, stop_event):
         while not stop_event.is_set():
             frame = utils.get_frame(self.connected_user.sock, stop_event, "TCP")
-            if frame is not None:
+            if frame is not None and isinstance(frame, Frame):
                 if DEBUG:
                     print("got frame")
                 self.handle_frame(frame, stop_event)
