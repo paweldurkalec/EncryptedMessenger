@@ -23,5 +23,5 @@ if __name__ == "__main__":
 
     with open('test_private_key.txt', 'rb') as f:
         private_key = RSA.importKey(f.read())
-    WaitForChatView(root, private_key, 'PAWEL-PC', images)
+    WaitForChatView(root, private_key, public_key,'PAWEL-PC', images)
     root.mainloop()

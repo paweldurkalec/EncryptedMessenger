@@ -1,20 +1,23 @@
 from time import sleep
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from session import Session, SessionStatus
 from stoppable_thread import StoppableThread
 from views.basic_view import BasicView
+from views.chat_view import ChatView
 
 
 class WaitForChatView(BasicView):
 
-    def __init__(self, root, private_key, name, images, session=None):
+    def __init__(self, root, private_key, public_key, name, images, session=None):
         super(WaitForChatView, self).__init__(root, images)
         if session:
             self.session = session
         else:
             self.session = self.initialize_session(private_key, name)
+        self.public_key = public_key
+        self.private_key = private_key
         self.listbox = None
         self.place_for_users = None
         self.online_users = session.user_list
@@ -38,9 +41,17 @@ class WaitForChatView(BasicView):
         session.open_broadcast()
         return session
 
+    def answer_to_invitation(self):
+        result = messagebox.askquestion("Zaproszenie do chatu", f"Czy chcesz przystąpić do chatu z {self.session.connected_user.name}", icon="question", default="yes",
+                                        parent=self.root, yesno="tak/nie")
+        if result == 'yes':
+            self.session.accept()
+            self.switch_to_chat()
+
+
     def check_users_actions(self):
         if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
-            pass
+            self.answer_to_invitation()
         online_users = self.session.user_list
         if online_users != self.online_users:
             self.online_users = online_users
@@ -72,27 +83,8 @@ class WaitForChatView(BasicView):
             item = self.listbox.get(index)
             print(f"You double clicked {item}")
 
-
-
-
-
-
-
-
-
-
-
-
-#while len(session.user_list) < 1:
-#    time.sleep(1)
-#
-#time.sleep(5)
-#session.send_init(session.user_list[0].name, session.user_list[0].address, public_key=public_key)
-#
-#while session.status != SessionStatus.ESTABLISHED:
-#    time.sleep(1)
-#
-#while session.status == SessionStatus.ESTABLISHED:
-#    print("Podaj tresc wiadomosci do wyslania: ")
-#    msg = input()
-#    session.send_text_message(msg)
+    def switch_to_chat(self):
+        self.thread.stop()
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        ChatView(self.root, self.private_key, self.public_key, self.name, self.images)
