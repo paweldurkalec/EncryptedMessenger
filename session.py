@@ -215,7 +215,7 @@ class Session:
         self.connected_user = None
 
     def send_text_message(self, msg):
-        frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, mac="X", text=msg)
+        frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, text=msg)
         self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
 

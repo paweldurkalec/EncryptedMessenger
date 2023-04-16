@@ -52,7 +52,6 @@ class TextMessageFrame(Frame):
 
     def __init__(self, **kwargs):
         super().__init__(FrameType.TEXT_MESSAGE)
-        self.mac = kwargs.get("mac")
         self.text = kwargs.get("text")
 
 
