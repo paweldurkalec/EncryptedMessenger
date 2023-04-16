@@ -31,8 +31,7 @@ class ChooseEncriptionAndKey(BasicView):
         pass # TODO
 
     def display_popup(self):
-        messagebox.Message.cancel = "Anuluj"
-        response = messagebox.askokcancel("Title", "Message")
+        response = messagebox.askokcancel("Oczekiwanie na użytkownika", "Trwa oczekiwanie na dołączenia użytkownika do czatu")
         if response == 'cancel':
             pass # TODO
         self.popup = None

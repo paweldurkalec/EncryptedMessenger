@@ -1,10 +1,8 @@
 from Crypto.PublicKey import RSA
 from PIL import ImageTk, Image
-import time
-import threading
 import tkinter as tk
 
-from crypto import gen_key_rsa
+
 from views.wait_for_chat_view import WaitForChatView
 
 if __name__ == "__main__":
@@ -23,5 +21,5 @@ if __name__ == "__main__":
 
     with open('test_private_key.txt', 'rb') as f:
         private_key = RSA.importKey(f.read())
-    WaitForChatView(root, private_key, public_key,'PAWEL-PC', images)
+    WaitForChatView(root, private_key, public_key,'PAWEL-PC2', images)
     root.mainloop()
