@@ -46,7 +46,7 @@ class WaitForChatView(BasicView):
         result = messagebox.askquestion("Zaproszenie do chatu", f"Czy chcesz przystąpić do chatu z {self.session.connected_user.name}", icon="question", default="yes",
                                         parent=self.root)
         if result == 'yes':
-            self.session.accept()
+            self.session.accept(self.public_key)
             self.switch_to_chat()
 
     def check_users_actions(self, stop_event, **kwargs):

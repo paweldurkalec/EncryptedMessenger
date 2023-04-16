@@ -35,8 +35,11 @@ class ChooseEncriptionAndKey(BasicView):
         response = messagebox.askokcancel("Title", "Message")
         if response == 'cancel':
             pass # TODO
+        self.popup = None
 
     def switch_to_chat(self):
+        if self.popup:
+            self.popup.destroy()
         self.thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
