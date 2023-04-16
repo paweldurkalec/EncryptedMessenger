@@ -96,7 +96,7 @@ class Session:
             frame, address = utils.get_frame(sock, stop_event, protocol="UDP")
             if frame is not None:
                 user = UserInfo(frame.sender_name, address)
-                if user not in self.user_list and user.address != socket.gethostbyname(socket.gethostname()):
+                if user not in self.user_list and user.address != socket.gethostbyname(socket.gethostname()) and user.name != self.info['user_name']:
                     self.user_list.append(UserInfo(frame.sender_name, address))
 
     def listen_for_connections(self, stop_event, **kwargs):
@@ -193,7 +193,7 @@ class Session:
             raise TimeoutError("Init frame expired")
 
         self.cipher_info["public_key"] = public_key
-        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", response="ACCEPT")
+        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="ACCEPT")
         utils.send_frame(self.connected_user.sock, frame)
         self.close_broadcast()
         self.status = SessionStatus.ESTABLISHED
@@ -202,7 +202,7 @@ class Session:
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
-        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, mac="X", response="DECLINE")
+        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="DECLINE")
         utils.send_frame(self.connected_user.sock, frame)
         self.status = SessionStatus.UNESTABLISHED
 
@@ -215,7 +215,7 @@ class Session:
         self.connected_user = None
 
     def send_text_message(self, msg):
-        frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, mac="X", text=msg)
+        frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, text=msg)
         self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
 

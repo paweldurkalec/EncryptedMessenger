@@ -44,7 +44,6 @@ class AcceptFrame(Frame):
 
     def __init__(self, **kwargs):
         super().__init__(FrameType.ACCEPT_CONNECTION)
-        self.mac = kwargs.get("mac")
         self.response = kwargs.get("response") # ACCEPT / DECLINE
 
 
@@ -52,7 +51,6 @@ class TextMessageFrame(Frame):
 
     def __init__(self, **kwargs):
         super().__init__(FrameType.TEXT_MESSAGE)
-        self.mac = kwargs.get("mac")
         self.text = kwargs.get("text")
 
 
