@@ -18,10 +18,11 @@ class WaitForChatView(BasicView):
         else:
             self.session = self.initialize_session(private_key, name)
         self.public_key = public_key
+        self.name = name
         self.private_key = private_key
         self.listbox = None
         self.place_for_users = None
-        self.online_users = self.session.user_list
+        self.online_users = self.session.user_list.copy()
         self.display_widgets()
         self.thread = StoppableThread(self.check_users_actions)
         self.thread.thread.start()
@@ -43,7 +44,7 @@ class WaitForChatView(BasicView):
 
     def answer_to_invitation(self):
         result = messagebox.askquestion("Zaproszenie do chatu", f"Czy chcesz przystąpić do chatu z {self.session.connected_user.name}", icon="question", default="yes",
-                                        parent=self.root, yesno="tak/nie")
+                                        parent=self.root)
         if result == 'yes':
             self.session.accept()
             self.switch_to_chat()
@@ -52,7 +53,7 @@ class WaitForChatView(BasicView):
         while not stop_event.is_set():
             if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
                 self.answer_to_invitation()
-            online_users = self.session.user_list
+            online_users = self.session.user_list.copy()
             if online_users != self.online_users:
                 self.online_users = online_users
                 self.refresh_place_for_users()
@@ -90,10 +91,11 @@ class WaitForChatView(BasicView):
         self.thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
-        ChatView(self.root, self.private_key, self.public_key, self.name, self.images)
+        ChatView(self.root, self.private_key, self.public_key, self.name, self.images, self.session)
 
     def switch_to_choose_encription(self):
         self.thread.stop()
+        print('destroying')
         for widget in self.root.winfo_children():
             widget.destroy()
-        ChooseEncriptionAndKey(self.root, self.private_key, self.public_key, self.name, self.images)
+        ChooseEncriptionAndKey(self.root, self.private_key, self.public_key, self.name, self.images, self.session)

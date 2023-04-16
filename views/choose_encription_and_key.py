@@ -22,23 +22,18 @@ class ChooseEncriptionAndKey(BasicView):
         self.name = name
         self.display_widgets()
         self.popup = None
+        self.thread = StoppableThread(self.wait_for_other_user)
+        self.thread.thread.start()
         self.display_popup()
-        self.thread = StoppableThread()
+
 
     def display_widgets(self):
         pass # TODO
 
     def display_popup(self):
-        self.popup = messagebox.Message(
-            self.root,
-            message="Oczekiwanie na użytkownika",
-            title="Trwa nawiązywanie połączenia",
-            icon="info",
-            type=messagebox.CANCEL
-        )
-        self.popup.cancel = "Anuluj"
-        result = self.popup.show()
-        if result == 'cancel':
+        messagebox.Message.cancel = "Anuluj"
+        response = messagebox.askokcancel("Title", "Message")
+        if response == 'cancel':
             pass # TODO
 
     def switch_to_chat(self):
