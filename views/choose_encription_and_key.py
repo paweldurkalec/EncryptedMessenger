@@ -1,21 +1,19 @@
 from lazy_import import lazy_module
-from time import sleep
-import tkinter as tk
-from tkinter import ttk, messagebox
-from threading import Semaphore
+from tkinter import messagebox
 
-from session import Session, SessionStatus
-from stoppable_thread import StoppableThread
+from session import SessionStatus
 from views.basic_view import BasicView
 from views.chat_view import ChatView
 from stoppable_thread import StoppableThread
 
 wait_for_chat_module = lazy_module('views.wait_for_chat_view')
 
+
 class ChooseEncriptionAndKey(BasicView):
 
     def __init__(self, root, private_key, public_key, name, images, session):
         super(ChooseEncriptionAndKey, self).__init__(root, images)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.session= session
         self.private_key = private_key
         self.public_key = public_key
@@ -26,6 +24,10 @@ class ChooseEncriptionAndKey(BasicView):
         self.thread.thread.start()
         self.display_popup()
 
+    def on_closing(self):
+        if messagebox.askokcancel("Wyjście", "Czy na pewno chcesz zamknąć program?"):
+            self.thread.stop()
+            self.root.destroy()
 
     def display_widgets(self):
         pass # TODO
