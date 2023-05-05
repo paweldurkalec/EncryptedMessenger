@@ -1,15 +1,14 @@
 from lazy_import import lazy_module
-from time import sleep
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from threading import Semaphore
 
-from session import Session, SessionStatus
-from stoppable_thread import StoppableThread
+from session import SessionStatus
 from views.basic_view import BasicView
 from stoppable_thread import StoppableThread
 
 wait_for_chat_module = lazy_module('views.wait_for_chat_view')
+
 
 class ChatView(BasicView):
 
@@ -18,6 +17,7 @@ class ChatView(BasicView):
 
     def __init__(self, root, private_key, public_key, name, images, session):
         super(ChatView, self).__init__(root, images)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.name = name
         self.session = session
         self.public_key = public_key
@@ -30,7 +30,10 @@ class ChatView(BasicView):
         self.thread = StoppableThread(self.chat_with_connected_user)
         self.thread.thread.start()
 
-
+    def on_closing(self):
+        if messagebox.askokcancel("Wyjście", "Czy na pewno chcesz zamknąć program?"):
+            self.thread.stop()
+            self.root.destroy()
 
     def display_widgets(self):
         self.place_for_text_messages = tk.Text(self.root)
@@ -44,7 +47,6 @@ class ChatView(BasicView):
         send_button = tk.Button(self.root, text='Wyslij', command=self.send_message)
         send_button.place(x =300, y=500)
         tk.Button(self.root, text="Zamknij czat", command=self.switch_to_wait_for_chat).place(x=0,y=0)
-
 
     def switch_to_wait_for_chat(self):
         self.thread.stop()
