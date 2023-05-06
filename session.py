@@ -51,7 +51,6 @@ class Session:
         self.listen_connection_thread = StoppableThread(self.listen_for_connections)
         self.listen_frames_thread = StoppableThread(self.listen_for_frames)
         self.init_frame_create_time = None
-        self.init_handle_timeout_thread = StoppableThread(self.handle_init_timeout)
 
     def open_broadcast(self):
         self.user_list = []
@@ -159,11 +158,6 @@ class Session:
 
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
             self.text_messages.append(frame.text)
-
-    def handle_init_timeout(self, stop_event):
-        while not stop_event.is_set():
-            pass
-
 
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
