@@ -292,8 +292,8 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_MESSAGE:
             frame.file_name = crypto.decrypt_aes(frame.file_name, self.cipher_info)
-            frame.file_size = int.from_bytes(crypto.decrypt_aes(frame.file_size, self.cipher_info, type="int"))
-            frame.frame_number = int.from_bytes(crypto.decrypt_aes(frame.frame_number, self.cipher_info, type="int"))
+            frame.file_size = int.from_bytes(crypto.decrypt_aes(frame.file_size, self.cipher_info, type="int"), "little")
+            frame.frame_number = int.from_bytes(crypto.decrypt_aes(frame.frame_number, self.cipher_info, type="int"), "little")
             frame.content = crypto.decrypt_aes(frame.content, self.cipher_info, type="bytes")
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
