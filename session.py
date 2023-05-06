@@ -126,6 +126,7 @@ class Session:
                 if DEBUG:
                     print("got frame")
                 self.handle_frame(frame, stop_event)
+        print("listen for frames stopped")
 
     def handle_frame(self, frame, stop_event):
         self.decrypt_frame(frame)
@@ -208,6 +209,7 @@ class Session:
         utils.send_frame(self.connected_user.sock, frame)
         self.status = SessionStatus.UNESTABLISHED
         self.connected_user = None
+        self.listen_frames_thread.stop()
 
     def stop_waiting_for_response(self):
         if self.status != SessionStatus.WAITING_FOR_RESPONSE:
