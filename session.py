@@ -214,8 +214,10 @@ class Session:
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
-        frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="DECLINE")
-        utils.send_frame(self.connected_user.sock, frame)
+        if not (datetime.datetime.now() - datetime.timedelta(seconds=INIT_FRAME_TIMEOUT) > self.init_frame_create_time):
+            frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="DECLINE")
+            utils.send_frame(self.connected_user.sock, frame)
+
         self.status = SessionStatus.UNESTABLISHED
         self.connected_user = None
         self.listen_frames_thread.stop()
