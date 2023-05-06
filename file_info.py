@@ -1,7 +1,7 @@
 import math
 import os
 
-FILE_PART_SIZE = 1024
+FILE_PART_SIZE = 1024 * 1000
 
 class FileInfo:
 

@@ -9,7 +9,8 @@ class FrameType(IntEnum):
     ACCEPT_CONNECTION = 2,
     TEXT_MESSAGE = 3,
     FILE_MESSAGE = 4,
-    END_SESSION = 5
+    FILE_RESPOND = 5,
+    END_SESSION = 6
 
 
 class Frame(ABC):
@@ -64,6 +65,12 @@ class FileMessageFrame(Frame):
         self.content = kwargs.get("content")
 
 
+class FileRespondFrame(Frame):
+
+    def __init__(self, **kwargs):
+        super().__init__(FrameType.FILE_RESPOND)
+
+
 class EndFrame(Frame):
 
     def __init__(self):
@@ -97,6 +104,8 @@ class FrameFactory:
                     result = TextMessageFrame(**kwargs)
                 case FrameType.FILE_MESSAGE:
                     result = FileMessageFrame(**kwargs)
+                case FrameType.FILE_RESPOND:
+                    result = FileRespondFrame(**kwargs)
                 case FrameType.END_SESSION:
                     result = EndFrame()
         except Exception as e:

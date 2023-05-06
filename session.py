@@ -18,6 +18,7 @@ DEBUG = True
 BROADCAST_INTERVAL = 5
 SOCKET_TIMEOUT = 3
 INIT_FRAME_TIMEOUT = 30
+FILE_FRAME_INTERVAL = 0.5
 MCAST_GRP = '224.1.1.1'
 MCAST_PORT = 5007
 CONNECTION_PORT = 5008
@@ -55,6 +56,7 @@ class Session:
         self.listen_frames_thread = StoppableThread(self.listen_for_frames)
         self.send_file_thread = None
         self.init_frame_create_time = None
+        self.got_respond = False
 
     def open_broadcast(self):
         self.user_list = []
@@ -171,6 +173,11 @@ class Session:
                 file = FileInfo(frame.file_size, self.files_path, frame.file_name, "RECEIVED")
                 self.files.append(file)
             file.add_part(frame)
+            frame = FrameFactory.create_frame(FrameType.FILE_RESPOND)
+            utils.send_frame(self.connected_user.sock, frame)
+
+        elif frame.frame_type == FrameType.FILE_RESPOND:
+            self.got_respond = True
 
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
@@ -265,13 +272,16 @@ class Session:
             counter = 0
             part = f.read(FILE_PART_SIZE)
             while part:
-                time.sleep(1)
+                #time.sleep(FILE_FRAME_INTERVAL)
                 print(counter)
                 frame = FrameFactory.create_frame(FrameType.FILE_MESSAGE, file_name=file_name, file_size=file_size,
                                                   frame_number=counter, content=part)
                 self.encrypt_frame(frame)
                 utils.send_frame(self.connected_user.sock, frame)
                 file.add_part()
+                while not self.got_respond:
+                    pass
+                self.got_respond = False
                 part = f.read(FILE_PART_SIZE)
                 counter += 1
 

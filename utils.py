@@ -3,7 +3,7 @@ from frames import FrameFactory
 from threading import Event
 
 
-HEADER_SIZE = 10
+HEADER_SIZE = 20
 
 
 def address_present(user_list, address):
