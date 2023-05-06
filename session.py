@@ -185,6 +185,8 @@ class Session:
         self.cipher_info["session_key"] = session_key
         self.cipher_info["initial_vector"] = initial_vector
 
+        print(self.cipher_info)
+
         frame = FrameFactory.create_frame(FrameType.INIT_CONNECTION, sender_name=self.info["user_name"],
                                           block_cipher=self.cipher_info["block_cipher"],
                                           key_size=self.cipher_info["symmetric_key_len"], session_key=session_key,
@@ -279,8 +281,8 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_MESSAGE:
             frame.file_name = crypto.encrypt_aes(frame.file_name, self.cipher_info)
-            frame.file_size = crypto.encrypt_aes(frame.file_size, self.cipher_info, type="int")
-            frame.frame_number = crypto.encrypt_aes(frame.frame_number, self.cipher_info, type="int")
+            frame.file_size = crypto.encrypt_aes(str(frame.file_size), self.cipher_info)
+            frame.frame_number = crypto.encrypt_aes(str(frame.frame_number), self.cipher_info)
             frame.content = crypto.encrypt_aes(frame.content, self.cipher_info, type="bytes")
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
@@ -292,8 +294,8 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_MESSAGE:
             frame.file_name = crypto.decrypt_aes(frame.file_name, self.cipher_info)
-            frame.file_size = int.from_bytes(crypto.decrypt_aes(frame.file_size, self.cipher_info, type="int"), "little")
-            frame.frame_number = int.from_bytes(crypto.decrypt_aes(frame.frame_number, self.cipher_info, type="int"), "little")
+            frame.file_size = int(crypto.decrypt_aes(frame.file_size, self.cipher_info))
+            frame.frame_number = int(crypto.decrypt_aes(frame.frame_number, self.cipher_info))
             frame.content = crypto.decrypt_aes(frame.content, self.cipher_info, type="bytes")
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
