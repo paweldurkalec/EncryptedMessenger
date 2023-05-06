@@ -47,8 +47,12 @@ def get_frame(sock, stop_event=None, protocol="TCP"):
             msg, addr = None, None
         if msg is not None:
             if new_msg:
-                msg_len = int(msg[:HEADER_SIZE])
-                new_msg = False
+                try:
+                    msg_len = int(msg[:HEADER_SIZE])
+                    new_msg = False
+                except ValueError:
+                    print("Got corrupted frame or something that is not a frame")
+                    return None, None
 
             full_msg += msg
 
