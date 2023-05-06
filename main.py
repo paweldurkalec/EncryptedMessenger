@@ -23,3 +23,4 @@ if __name__ == "__main__":
         private_key = RSA.importKey(f.read())
     WaitForChatView(root, private_key, public_key,'PAWEL-PC2', images)
     root.mainloop()
+
