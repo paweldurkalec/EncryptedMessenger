@@ -196,7 +196,6 @@ class Session:
 
         self.cipher_info["public_key"] = public_key
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="ACCEPT")
-        self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
         self.close_broadcast()
         self.status = SessionStatus.ESTABLISHED
@@ -206,7 +205,6 @@ class Session:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="DECLINE")
-        self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
         self.status = SessionStatus.UNESTABLISHED
         self.connected_user = None
@@ -231,9 +229,6 @@ class Session:
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.encrypt_rsa(frame.session_key, self.cipher_info["public_key"])
 
-        elif frame.frame_type == FrameType.ACCEPT_CONNECTION:
-            frame.response = crypto.encrypt_aes(frame.response, self.cipher_info)
-
     def decrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
@@ -241,7 +236,5 @@ class Session:
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
 
-        elif frame.frame_type == FrameType.ACCEPT_CONNECTION:
-            frame.response = crypto.decrypt_aes(frame.response, self.cipher_info)
 
 
