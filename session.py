@@ -15,7 +15,7 @@ from Crypto.Cipher import AES
 DEBUG = True
 BROADCAST_INTERVAL = 5
 SOCKET_TIMEOUT = 3
-INIT_FRAME_TIMEOUT = 30
+INIT_FRAME_TIMEOUT = 5
 MCAST_GRP = '224.1.1.1'
 MCAST_PORT = 5007
 CONNECTION_PORT = 5008
@@ -50,8 +50,8 @@ class Session:
         self.listen_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
         self.listen_connection_thread = StoppableThread(self.listen_for_connections)
         self.listen_frames_thread = StoppableThread(self.listen_for_frames)
-        self.init_connection_thread = None
-        self.init_frame_reciv_time = None
+        self.init_frame_create_time = None
+        self.init_handle_timeout_thread = StoppableThread(self.handle_init_timeout)
 
     def open_broadcast(self):
         self.user_list = []
@@ -126,6 +126,11 @@ class Session:
                 if DEBUG:
                     print("got frame")
                 self.handle_frame(frame, stop_event)
+            else:
+                self.status = SessionStatus.UNESTABLISHED
+                self.connected_user = None
+                self.listen_frames_thread.stop()
+                print("Init timeouted")
         print("listen for frames stopped")
 
     def handle_frame(self, frame, stop_event):
@@ -134,7 +139,7 @@ class Session:
             if DEBUG:
                 print("Got init frame")
             self.connected_user.name = frame.sender_name
-            self.init_frame_reciv_time = datetime.datetime.now()
+            self.init_frame_create_time = datetime.datetime.now()
             self.cipher_info["symmetric_key_len"] = frame.key_size
             self.cipher_info["block_cipher"] = frame.block_cipher
             self.cipher_info["session_key"] = frame.session_key
@@ -149,11 +154,16 @@ class Session:
             else:
                 self.status = SessionStatus.UNESTABLISHED
                 self.connected_user = None
-                stop_event.set()
+                self.listen_frames_thread.stop()
                 return
 
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
             self.text_messages.append(frame.text)
+
+    def handle_init_timeout(self, stop_event):
+        while not stop_event.is_set():
+            pass
+
 
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
@@ -178,6 +188,8 @@ class Session:
         sock.connect((address, CONNECTION_PORT))
         sock.settimeout(INIT_FRAME_TIMEOUT + 2)
         utils.send_frame(sock, frame)
+        #self.init_frame_create_time = datetime.datetime.now()
+        #self.init_handle_timeout_thread.thread.start()
 
         self.status = SessionStatus.WAITING_FOR_RESPONSE
         self.connected_user = UserInfo(name, address, sock)
@@ -191,9 +203,12 @@ class Session:
         if self.status != SessionStatus.WAITING_FOR_ACCEPTANCE:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
-        if datetime.datetime.now() - datetime.timedelta(seconds=INIT_FRAME_TIMEOUT) > self.init_frame_reciv_time:
+        if datetime.datetime.now() - datetime.timedelta(seconds=INIT_FRAME_TIMEOUT) > self.init_frame_create_time:
             self.status = SessionStatus.UNESTABLISHED
-            raise TimeoutError("Init frame expired")
+            self.connected_user = None
+            self.listen_frames_thread.stop()
+            print("Init frame expired")
+            return
 
         self.cipher_info["public_key"] = public_key
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="ACCEPT")
