@@ -5,24 +5,30 @@ from Crypto.Cipher import PKCS1_OAEP  # RSA with padding
 from Crypto.Util.Padding import pad, unpad
 
 
-def encrypt_aes(message, cipher_info):
+def encrypt_aes(message, cipher_info, type="string"):
     if cipher_info["block_cipher"] == "CBC":
         cipher = AES.new(cipher_info["session_key"], AES.MODE_CBC, cipher_info["initial_vector"])
     else:
         cipher = AES.new(cipher_info["session_key"], AES.MODE_ECB)
 
-    ciphertext = cipher.encrypt(pad(bytes(message, 'utf-8'), AES.block_size))
+    if type == "string":
+        ciphertext = cipher.encrypt(pad(bytes(message, 'utf-8'), AES.block_size))
+    else:
+        ciphertext = cipher.encrypt(pad(bytes(message), AES.block_size))
     return ciphertext
 
 
-def decrypt_aes(ciphertext, cipher_info):
+def decrypt_aes(ciphertext, cipher_info, type="string"):
     if cipher_info["block_cipher"] == "CBC":
         cipher = AES.new(cipher_info["session_key"], AES.MODE_CBC, cipher_info["initial_vector"])
     else:
         cipher = AES.new(cipher_info["session_key"], AES.MODE_ECB)
 
     message = unpad(cipher.decrypt(ciphertext), AES.block_size)
-    return message.decode(encoding='utf-8')
+    if type == "string":
+        return message.decode(encoding='utf-8')
+    else:
+        return message
 
 
 def encrypt_rsa(message, public_key):

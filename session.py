@@ -130,10 +130,11 @@ class Session:
                     print("got frame")
                 self.handle_frame(frame, stop_event)
             else:
-                self.status = SessionStatus.UNESTABLISHED
-                self.connected_user = None
-                self.listen_frames_thread.stop()
-                print("Init timeouted")
+                if self.status == SessionStatus.WAITING_FOR_RESPONSE:
+                    self.status = SessionStatus.UNESTABLISHED
+                    self.connected_user = None
+                    self.listen_frames_thread.stop()
+                    print("Init timeouted")
         print("listen for frames stopped")
 
     def handle_frame(self, frame, stop_event):
@@ -262,10 +263,14 @@ class Session:
             counter = 0
             part = f.read(FILE_PART_SIZE)
             while part:
-                frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, file_name=file_name, file_size=file_size,
+                print(counter)
+                frame = FrameFactory.create_frame(FrameType.FILE_MESSAGE, file_name=file_name, file_size=file_size,
                                                   frame_number=counter, content=part)
+                self.encrypt_frame(frame)
                 utils.send_frame(self.connected_user.sock, frame)
                 file.add_part()
+                part = f.read(FILE_PART_SIZE)
+                counter += 1
 
     def encrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
@@ -273,9 +278,9 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_MESSAGE:
             frame.file_name = crypto.encrypt_aes(frame.file_name, self.cipher_info)
-            frame.file_size = crypto.encrypt_aes(frame.file_size, self.cipher_info)
-            frame.frame_number = crypto.encrypt_aes(frame.frame_number, self.cipher_info)
-            frame.content = crypto.encrypt_aes(frame.content, self.cipher_info)
+            frame.file_size = crypto.encrypt_aes(frame.file_size, self.cipher_info, type="int")
+            frame.frame_number = crypto.encrypt_aes(frame.frame_number, self.cipher_info, type="int")
+            frame.content = crypto.encrypt_aes(frame.content, self.cipher_info, type="bytes")
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.encrypt_rsa(frame.session_key, self.cipher_info["public_key"])
@@ -286,9 +291,9 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_MESSAGE:
             frame.file_name = crypto.decrypt_aes(frame.file_name, self.cipher_info)
-            frame.file_size = crypto.decrypt_aes(frame.file_size, self.cipher_info)
-            frame.frame_number = crypto.decrypt_aes(frame.frame_number, self.cipher_info)
-            frame.content = crypto.decrypt_aes(frame.content, self.cipher_info)
+            frame.file_size = crypto.decrypt_aes(frame.file_size, self.cipher_info, type="int")
+            frame.frame_number = crypto.decrypt_aes(frame.frame_number, self.cipher_info, type="int")
+            frame.content = crypto.decrypt_aes(frame.content, self.cipher_info, type="bytes")
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
