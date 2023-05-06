@@ -14,11 +14,10 @@ from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
 
 
-DEBUG = True
+DEBUG = False
 BROADCAST_INTERVAL = 5
 SOCKET_TIMEOUT = 3
 INIT_FRAME_TIMEOUT = 30
-FILE_FRAME_INTERVAL = 0.5
 MCAST_GRP = '224.1.1.1'
 MCAST_PORT = 5007
 CONNECTION_PORT = 5008
@@ -272,7 +271,6 @@ class Session:
             counter = 0
             part = f.read(FILE_PART_SIZE)
             while part:
-                #time.sleep(FILE_FRAME_INTERVAL)
                 print(counter)
                 frame = FrameFactory.create_frame(FrameType.FILE_MESSAGE, file_name=file_name, file_size=file_size,
                                                   frame_number=counter, content=part)
