@@ -54,6 +54,16 @@ class TextMessageFrame(Frame):
         self.text = kwargs.get("text")
 
 
+class FileMessageFrame(Frame):
+
+    def __init__(self, **kwargs):
+        super().__init__(FrameType.FILE_MESSAGE)
+        self.file_name = kwargs.get("file_name")
+        self.file_size = kwargs.get("file_size")
+        self.frame_number = kwargs.get("frame_number")
+        self.content = kwargs.get("content")
+
+
 class EndFrame(Frame):
 
     def __init__(self):
@@ -85,6 +95,8 @@ class FrameFactory:
                     result = AcceptFrame(**kwargs)
                 case FrameType.TEXT_MESSAGE:
                     result = TextMessageFrame(**kwargs)
+                case FrameType.FILE_MESSAGE:
+                    result = FileMessageFrame(**kwargs)
                 case FrameType.END_SESSION:
                     result = EndFrame()
         except Exception as e:

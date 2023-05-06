@@ -4,7 +4,9 @@ import time
 import utils
 import datetime
 import crypto
+import os
 from frames import FrameType, FrameFactory, Frame
+from file_info import FileInfo, FILE_PART_SIZE
 from enum import IntEnum
 from stoppable_thread import StoppableThread
 from user_info import UserInfo
@@ -31,9 +33,10 @@ class SessionStatus(IntEnum):
 
 class Session:
 
-    def __init__(self, user_name, private_key, mcast_grp=MCAST_GRP, mcast_port=MCAST_PORT):
+    def __init__(self, user_name, private_key, mcast_grp=MCAST_GRP, mcast_port=MCAST_PORT, files_path="files/"):
         self.status = SessionStatus.NEW
         self.user_list = []
+        self.files_path = files_path
         self.info = {"user_name": user_name, "mcast_grp": mcast_grp, "mcast_port": mcast_port}
         self.connected_user = None
         self.cipher_info = {
@@ -45,11 +48,12 @@ class Session:
             "private_key": private_key
         }
         self.text_messages = []
-        self.file_messages = []
+        self.files = []
         self.send_broadcast_thread = StoppableThread(self.send_broadcast)
         self.listen_broadcast_thread = StoppableThread(self.listen_for_broadcasts)
         self.listen_connection_thread = StoppableThread(self.listen_for_connections)
         self.listen_frames_thread = StoppableThread(self.listen_for_frames)
+        self.send_file_thread = None
         self.init_frame_create_time = None
 
     def open_broadcast(self):
@@ -159,6 +163,14 @@ class Session:
         elif frame.frame_type == FrameType.TEXT_MESSAGE and self.status == SessionStatus.ESTABLISHED:
             self.text_messages.append(frame.text)
 
+        elif frame.frame_type == FrameType.FILE_MESSAGE and self.status == SessionStatus.ESTABLISHED:
+            try:
+                file = list(filter(lambda x: x.file_name == frame.file_name and x.type == "RECEIVED", self.files))[0]
+            except IndexError:
+                file = FileInfo(frame.file_size, self.files_path, frame.file_name, "RECEIVED")
+                self.files.append(file)
+            file.add_part(frame)
+
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
             raise ValueError('AES key length should be equal to 128 or 192 or 256')
@@ -235,9 +247,34 @@ class Session:
         self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
 
+    def send_file(self, file_name):
+        self.send_file_thread = StoppableThread(self.send_file_func, file_name=file_name)
+        self.send_file_thread.thread.start()
+
+    def send_file_func(self, stop_event, **kwargs):
+        file_name = kwargs["file_name"]
+        file_path = os.path.join(self.files_path, file_name)
+        file_size = os.path.getsize(file_path)
+        with open(file_path, 'rb') as f:
+            file = FileInfo(file_size, self.files_path, file_name, "SENT")
+            self.files.append(file)
+
+            counter = 0
+            part = f.read(FILE_PART_SIZE)
+            while part:
+                frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, file_name=file_name, file_size=file_size,
+                                                  frame_number=counter, content=part)
+                file.add_part()
+
     def encrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.encrypt_aes(frame.text, self.cipher_info)
+
+        elif frame.frame_type == FrameType.FILE_MESSAGE:
+            frame.file_name = crypto.encrypt_aes(frame.file_name, self.cipher_info)
+            frame.file_size = crypto.encrypt_aes(frame.file_size, self.cipher_info)
+            frame.frame_number = crypto.encrypt_aes(frame.frame_number, self.cipher_info)
+            frame.content = crypto.encrypt_aes(frame.content, self.cipher_info)
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.encrypt_rsa(frame.session_key, self.cipher_info["public_key"])
@@ -245,6 +282,12 @@ class Session:
     def decrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
+
+        elif frame.frame_type == FrameType.FILE_MESSAGE:
+            frame.file_name = crypto.decrypt_aes(frame.file_name, self.cipher_info)
+            frame.file_size = crypto.decrypt_aes(frame.file_size, self.cipher_info)
+            frame.frame_number = crypto.decrypt_aes(frame.frame_number, self.cipher_info)
+            frame.content = crypto.decrypt_aes(frame.content, self.cipher_info)
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
