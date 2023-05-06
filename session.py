@@ -264,6 +264,7 @@ class Session:
             while part:
                 frame = FrameFactory.create_frame(FrameType.TEXT_MESSAGE, file_name=file_name, file_size=file_size,
                                                   frame_number=counter, content=part)
+                utils.send_frame(self.connected_user.sock, frame)
                 file.add_part()
 
     def encrypt_frame(self, frame):
