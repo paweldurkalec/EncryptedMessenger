@@ -66,6 +66,7 @@ class Session:
         self.listen_connection_thread.stop()
 
     def send_broadcast(self, stop_event, **kwargs):
+        print("sending broadcast")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
 
@@ -97,6 +98,7 @@ class Session:
             if frame is not None:
                 user = UserInfo(frame.sender_name, address)
                 if user not in self.user_list and user.address != socket.gethostbyname(socket.gethostname()) and user.name != self.info['user_name']:
+                    print("found user")
                     self.user_list.append(UserInfo(frame.sender_name, address))
 
     def listen_for_connections(self, stop_event, **kwargs):
@@ -194,6 +196,7 @@ class Session:
 
         self.cipher_info["public_key"] = public_key
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="ACCEPT")
+        self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
         self.close_broadcast()
         self.status = SessionStatus.ESTABLISHED
@@ -203,8 +206,10 @@ class Session:
             raise Exception(f"Status is {self.status} instead of WAITING_FOR_ACCEPTANCE")
 
         frame = FrameFactory.create_frame(FrameType.ACCEPT_CONNECTION, response="DECLINE")
+        self.encrypt_frame(frame)
         utils.send_frame(self.connected_user.sock, frame)
         self.status = SessionStatus.UNESTABLISHED
+        self.connected_user = None
 
     def stop_waiting_for_response(self):
         if self.status != SessionStatus.WAITING_FOR_RESPONSE:
@@ -226,11 +231,17 @@ class Session:
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.encrypt_rsa(frame.session_key, self.cipher_info["public_key"])
 
+        elif frame.frame_type == FrameType.ACCEPT_CONNECTION:
+            frame.response = crypto.encrypt_aes(frame.response, self.cipher_info)
+
     def decrypt_frame(self, frame):
         if frame.frame_type == FrameType.TEXT_MESSAGE:
             frame.text = crypto.decrypt_aes(frame.text, self.cipher_info)
 
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
+
+        elif frame.frame_type == FrameType.ACCEPT_CONNECTION:
+            frame.response = crypto.decrypt_aes(frame.response, self.cipher_info)
 
 
