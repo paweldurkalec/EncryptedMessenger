@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 
 from views.basic_view import BasicView
 from views.add_new_key_view import AddNewKeyView
+from views.choose_key_name_view import ChooseKeyNameView
 
 
 class StartView(BasicView):
@@ -17,7 +18,7 @@ class StartView(BasicView):
     def display_widgets(self):
         add_key_button = tk.Button(self.root, text='Dodaj nowy klucz', font = self.BUTTON_FONT, width=30, command=self.switch_to_add_key)
         add_key_button.pack(pady=self.PAD_Y)
-        add_key_button = tk.Button(self.root, text='Użyj istniejącego klucza', font= self.BUTTON_FONT, width=30)
+        add_key_button = tk.Button(self.root, text='Użyj istniejącego klucza', font= self.BUTTON_FONT, width=30, command=self.switch_to_choose_old_key)
         add_key_button.pack(pady=self.PAD_Y/2)
 
     def on_closing(self):
@@ -30,5 +31,7 @@ class StartView(BasicView):
         AddNewKeyView(self.root, self.images)
 
     def switch_to_choose_old_key(self):
-        pass
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        ChooseKeyNameView(self.root, self.images)
 
