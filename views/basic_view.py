@@ -9,6 +9,7 @@ class BasicView:
     PAD_Y = 40
     BACKGROUND_COLOR = 'white'
     WORKING_DIR = Path(os.getcwd())
+    PRIVATE_KEY_DIR = os.path.join(Path(os.getcwd()),"ssh_private")
 
     def __init__(self, root, images):
         self.root = root

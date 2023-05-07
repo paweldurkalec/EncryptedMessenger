@@ -11,13 +11,12 @@ from views.choose_encription_and_key import ChooseEncriptionAndKey
 
 class WaitForChatView(BasicView):
 
-    def __init__(self, root, private_key, public_key, name, images, session=None):
+    def __init__(self, root, private_key, name, images, session=None):
         super(WaitForChatView, self).__init__(root, images)
         if session:
             self.session = session
         else:
             self.session = self.initialize_session(private_key, name)
-        self.public_key = public_key
         self.name = name
         self.private_key = private_key
         self.listbox = None
