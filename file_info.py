@@ -20,7 +20,7 @@ class FileInfo:
         if self.is_ready:
             return
 
-        self.parts.append(part)
+        self.parts.append(None)
         self.percentage = len(self.parts) / self.max_num_of_parts * 100
 
         if self.type == "RECEIVED":
@@ -29,13 +29,3 @@ class FileInfo:
                 self.file.close()
                 self.parts = []
                 self.is_ready = True
-
-    def merge_file(self):
-        self.parts.sort(key=lambda x: x.frame_number)
-        file = b''
-        for part in self.parts:
-            file += part.content
-        self.parts = []
-        with open(self.file_path, 'wb') as f:
-            f.write(file)
-        self.is_ready = True
