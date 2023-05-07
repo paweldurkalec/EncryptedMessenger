@@ -1,3 +1,5 @@
 .idea
 __pycache__
 venv
+ssh_public/
+ssh_private/
