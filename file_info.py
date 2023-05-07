@@ -14,19 +14,21 @@ class FileInfo:
         self.parts = []
         self.max_num_of_parts = math.ceil(size_of_file/FILE_PART_SIZE)
         self.percentage = 0
+        self.file = open(self.file_path, 'ab')
 
     def add_part(self, part=None):
         if self.is_ready:
             return
 
-        if self.type == "SENT":
-            self.parts.append(None)
-            self.percentage = len(self.parts) / self.max_num_of_parts * 100
+        self.parts.append(part)
+        self.percentage = len(self.parts) / self.max_num_of_parts * 100
+
         if self.type == "RECEIVED":
-            self.parts.append(part)
-            self.percentage = len(self.parts)/self.max_num_of_parts * 100
+            self.file.write(part.content)
             if self.percentage == 100.0:
-                self.merge_file()
+                self.file.close()
+                self.parts = []
+                self.is_ready = True
 
     def merge_file(self):
         self.parts.sort(key=lambda x: x.frame_number)
