@@ -4,7 +4,7 @@ from time import sleep
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-
+import hashlib
 from session import Session, SessionStatus
 from stoppable_thread import StoppableThread
 from views.basic_view import BasicView
@@ -17,15 +17,10 @@ start_view_module = lazy_module("views.start_view")
 
 class ChooseKeyNameView(BasicView):
 
-    def __init__(self, root, images):
-        super(ChooseKeyNameView, self).__init__(root, images)
+    def __init__(self, root, images, public_keys, private_keys):
+        super(ChooseKeyNameView, self).__init__(root, images, public_keys, private_keys)
         self.listbox = None
         self.place_for_keys = None
-        self.private_keys = [f for f in os.listdir(self.PRIVATE_KEY_DIR) if os.path.isfile(os.path.join(self.PRIVATE_KEY_DIR, f))]
-        if not self.private_keys:
-            messagebox.showerror("Brak kluczy", "Nie dodałeś żadnych prywatnych kluczy. Aby kontynuować dodaj odpowiedni klucz")
-            AddNewKeyView(self.root, images)
-            return
         self.entry_name = None
         self.entry_password = None
         self.display_widgets()
@@ -58,6 +53,23 @@ class ChooseKeyNameView(BasicView):
             return self.listbox.get(index)
         return
 
+    def decrypt_key(self,password, path_to_key):
+        from Crypto.Cipher import AES
+        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), iterations=100000)
+        key_hash = key_hash.hex()
+        block_size = 16
+        decrypted_key = ''
+        # otwarcie pliku zaszyfrowanego
+        with open(path_to_key, 'rb') as infile:
+            iv = infile.read(block_size)
+            cipher = AES.new(key_hash, AES.MODE_CBC, iv)
+            while True:
+                block = infile.read(block_size)
+                if len(block) == 0:
+                    break
+                decrypted_key+=cipher.decrypt(block)
+        return decrypted_key
+
     def switch_to_waiting_for_chat_view(self):
         selected_key = self.get_selected_key()
         if not selected_key:
@@ -70,7 +82,8 @@ class ChooseKeyNameView(BasicView):
                                  "Podaj hasło do klucza publicznego.")
             return
         try:
-            private_key = paramiko.RSAKey(filename=path_to_selected_key, password=password)
+            decrypted_key = self.decrypt_key(password,path_to_selected_key)
+            private_key = paramiko.RSAKey(decrypted_key)
             private_key.can_sign()
         except paramiko.ssh_exception.SSHException as e:
                 messagebox.showerror("Złe hasło",
@@ -82,8 +95,7 @@ class ChooseKeyNameView(BasicView):
             return
         for widget in self.root.winfo_children():
             widget.destroy()
-        WaitForChatView(self.root, path_to_selected_key, name, self.images)
-        pass
+        WaitForChatView(self.root, path_to_selected_key, name, self.images, self.public_keys, self.private_keys)
 
     def display_keys(self):
         self.listbox = tk.Listbox(self.place_for_keys, justify="center", font=self.BUTTON_FONT)

@@ -1,4 +1,6 @@
 import os.path
+import hashlib
+from Crypto.Cipher import AES
 
 from lazy_import import lazy_module
 import paramiko
@@ -88,12 +90,12 @@ class AddNewKeyView(BasicView):
             path_to_key = self.key_path
             destination = f"{self.WORKING_DIR}/ssh_private/{filename}"
             try:
-                private_key = paramiko.RSAKey(filename=self.key_path, password=self.entry_password.get())
+                private_key = paramiko.RSAKey(filename=self.key_path)
                 private_key.can_sign()
             except paramiko.ssh_exception.SSHException as e:
-                if e.args[0] == "OpenSSH private key file checkints do not match":
-                    messagebox.showerror("Złe hasło",
-                                         "Podano złe hasło.")
+                if e.args[0] == "private key file is encrypted":
+                    messagebox.showerror("Klucz jest zaszyfrowany",
+                                         "Klucz jest zaszyfrowany. Usuń zabezpieczenie.")
                     return
                 else:
                     messagebox.showerror("Zły plik",
@@ -103,8 +105,29 @@ class AddNewKeyView(BasicView):
                 messagebox.showerror("Nieunikatowa nazwa",
                                      "Taka nazwa klucza już istanieje. Wybierz nową.")
                 return
-            shutil.copy(path_to_key, destination)
+
+            self.encrypt_key(path_to_key, filename, self.entry_password.get())
         self.switch_to_start_view()
+
+
+    def encrypt_key(self, private_key, name, password):
+        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), iterations=100000)
+        key_hash = key_hash.hex()
+        output_file = f'{os.path.join(self.PRIVATE_KEY_DIR,name)}.pem'
+        block_size = 16
+        iv = os.urandom(16)
+        cipher = AES.new(key_hash, AES.MODE_CBC, iv)
+        with open(private_key, 'rb') as infile:
+            with open(output_file, 'wb') as outfile:
+                outfile.write(iv)
+                while True:
+                    block = infile.read(block_size)
+                    if len(block) == 0:
+                        break
+                    elif len(block) % block_size != 0:
+                        block += b' ' * (block_size - len(block) % block_size)
+                    outfile.write(cipher.encrypt(block))
+
 
     def allowed_extensions(self):
         ret = ""
