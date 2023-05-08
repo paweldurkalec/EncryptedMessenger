@@ -154,6 +154,7 @@ class Session:
         elif frame.frame_type == FrameType.ACCEPT_CONNECTION and self.status == SessionStatus.WAITING_FOR_RESPONSE:
             if frame.response == "ACCEPT":
                 self.status = SessionStatus.ESTABLISHED
+                self.close_broadcast()
                 if DEBUG:
                     print("Got acceptance, status established")
             else:
@@ -177,6 +178,9 @@ class Session:
 
         elif frame.frame_type == FrameType.FILE_RESPOND:
             self.got_respond = True
+
+        elif frame.frame_type == FrameType.END_SESSION:
+            self.end(send=False)
 
     def send_init(self, name, address, public_key="X", block_cipher="CBC", symmetric_key_len=128):
         if symmetric_key_len != 128 and symmetric_key_len != 192 and symmetric_key_len != 256:
@@ -309,5 +313,25 @@ class Session:
         elif frame.frame_type == FrameType.INIT_CONNECTION:
             frame.session_key = crypto.decrypt_rsa(frame.session_key, self.cipher_info["private_key"])
 
-
+    def end(self, send=True):
+        if send:
+            frame = FrameFactory.create_frame(FrameType.END_SESSION)
+            utils.send_frame(self.connected_user.sock, frame)
+        self.status = SessionStatus.NEW
+        self.user_list = []
+        self.connected_user = None
+        self.cipher_info = {
+            "symmetric_key_len": 0,
+            "block_cipher": "",
+            "session_key": bytes(),
+            "initial_vector": bytes(),
+            "public_key": bytes(),
+            "private_key": self.cipher_info["private_key"]
+        }
+        self.text_messages = []
+        self.files = []
+        self.send_file_thread = None
+        self.init_frame_create_time = None
+        self.got_respond = False
+        self.open_broadcast()
 

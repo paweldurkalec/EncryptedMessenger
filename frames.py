@@ -67,7 +67,7 @@ class FileMessageFrame(Frame):
 
 class FileRespondFrame(Frame):
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         super().__init__(FrameType.FILE_RESPOND)
 
 
