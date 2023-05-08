@@ -333,5 +333,6 @@ class Session:
         self.send_file_thread = None
         self.init_frame_create_time = None
         self.got_respond = False
+        self.listen_frames_thread.stop()
         self.open_broadcast()
 
