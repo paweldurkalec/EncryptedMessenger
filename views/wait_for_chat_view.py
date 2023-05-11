@@ -28,7 +28,7 @@ class WaitForChatView(BasicView):
         self.thread = StoppableThread(self.check_users_actions)
         self.thread.thread.start()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.popup = None
+        self.popup = False
 
     def on_closing(self):
         if messagebox.askokcancel("Wyjście", "Czy na pewno chcesz zamknąć program?"):
@@ -65,14 +65,17 @@ class WaitForChatView(BasicView):
                                         parent=self.root)
         self.popup = False
         if result == 'yes':
-            self.switch_to_choose_encription(self.session.connected_user.name)
+            return True
         else:
             self.session.decline()
 
     def check_users_actions(self, stop_event, **kwargs):
         while not stop_event.is_set():
             if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE and self.popup==False:
-                self.answer_to_invitation()
+                print("Dostalem zapke")
+                if self.answer_to_invitation():
+                    self.root.after(0, lambda: self.switch_to_choose_encription(self.session.connected_user.name))
+                    return
             online_users = self.session.user_list.copy()
             if online_users != self.online_users:
                 self.online_users = online_users
@@ -116,4 +119,4 @@ class WaitForChatView(BasicView):
         self.thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
-        ChooseEncriptionAndKey(self.root, self.private_key, self.public_key, self.name, self.images, self.session, user_name, self.public_keys, self.private_keys, user_address)
+        ChooseEncriptionAndKey(self.root, self.private_key, self.name, self.images, self.session, user_name, self.public_keys, self.private_keys, user_address)

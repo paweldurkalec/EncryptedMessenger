@@ -90,7 +90,7 @@ class AddNewKeyView(BasicView):
             path_to_key = self.key_path
             destination = f"{self.WORKING_DIR}/ssh_private/{filename}"
             try:
-                private_key = paramiko.RSAKey(filename=self.key_path)
+                private_key = paramiko.RSAKey(filename=path_to_key)
                 private_key.can_sign()
             except paramiko.ssh_exception.SSHException as e:
                 if e.args[0] == "private key file is encrypted":
@@ -111,8 +111,8 @@ class AddNewKeyView(BasicView):
 
 
     def encrypt_key(self, private_key, name, password):
-        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), iterations=100000)
-        key_hash = key_hash.hex()
+        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), self.salt, iterations=100000)
+        key_hash = key_hash[:32]
         output_file = f'{os.path.join(self.PRIVATE_KEY_DIR,name)}.pem'
         block_size = 16
         iv = os.urandom(16)

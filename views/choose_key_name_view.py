@@ -12,6 +12,8 @@ from views.chat_view import ChatView
 from views.choose_encription_and_key import ChooseEncriptionAndKey
 from views.add_new_key_view import AddNewKeyView
 from views.wait_for_chat_view import WaitForChatView
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
 
 start_view_module = lazy_module("views.start_view")
 
@@ -54,12 +56,10 @@ class ChooseKeyNameView(BasicView):
         return
 
     def decrypt_key(self,password, path_to_key):
-        from Crypto.Cipher import AES
-        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), iterations=100000)
-        key_hash = key_hash.hex()
+        key_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), self.salt, iterations=100000)
+        key_hash = key_hash[:32]
         block_size = 16
         decrypted_key = ''
-        # otwarcie pliku zaszyfrowanego
         with open(path_to_key, 'rb') as infile:
             iv = infile.read(block_size)
             cipher = AES.new(key_hash, AES.MODE_CBC, iv)
@@ -67,8 +67,9 @@ class ChooseKeyNameView(BasicView):
                 block = infile.read(block_size)
                 if len(block) == 0:
                     break
-                decrypted_key+=cipher.decrypt(block)
-        return decrypted_key
+                decrypted_key+=cipher.decrypt(block).decode("utf-8")
+        return RSA.import_key(decrypted_key)
+
 
     def switch_to_waiting_for_chat_view(self):
         selected_key = self.get_selected_key()
@@ -81,21 +82,15 @@ class ChooseKeyNameView(BasicView):
             messagebox.showerror("Brak hasła",
                                  "Podaj hasło do klucza publicznego.")
             return
-        try:
-            decrypted_key = self.decrypt_key(password,path_to_selected_key)
-            private_key = paramiko.RSAKey(decrypted_key)
-            private_key.can_sign()
-        except paramiko.ssh_exception.SSHException as e:
-                messagebox.showerror("Złe hasło",
-                                     "Podano złe hasło.")
-                return
+        decrypted_key = self.decrypt_key(password, path_to_selected_key)
+
         if not(name:=self.entry_name.get()):
             messagebox.showerror("Brak nazwy",
                                  "Podaj nazwę użytkownika, aby kontynuować.")
             return
         for widget in self.root.winfo_children():
             widget.destroy()
-        WaitForChatView(self.root, path_to_selected_key, name, self.images, self.public_keys, self.private_keys)
+        WaitForChatView(self.root, decrypted_key, name, self.images, self.public_keys, self.private_keys)
 
     def display_keys(self):
         self.listbox = tk.Listbox(self.place_for_keys, justify="center", font=self.BUTTON_FONT)

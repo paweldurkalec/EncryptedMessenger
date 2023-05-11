@@ -15,12 +15,11 @@ class ChatView(BasicView):
     MY_COLOR = '#ADD8E6'
     CONNECTED_USER_COLOR = '#90EE90'
 
-    def __init__(self, root, private_key, public_key, name, images, session):
-        super(ChatView, self).__init__(root, images)
+    def __init__(self, root, private_key, name, images, session, public_keys, private_keys):
+        super(ChatView, self).__init__(root, images, public_keys, private_keys)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.name = name
         self.session = session
-        self.public_key = public_key
         self.private_key = private_key
         self.place_for_text_messages = None
         self.text_input = None
