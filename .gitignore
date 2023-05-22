@@ -3,3 +3,4 @@ __pycache__
 venv
 ssh_public/
 ssh_private/
+files/

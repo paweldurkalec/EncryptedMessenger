@@ -64,10 +64,11 @@ class ChooseKeyNameView(BasicView):
             iv = infile.read(block_size)
             cipher = AES.new(key_hash, AES.MODE_CBC, iv)
             while True:
-                block = infile.read(block_size)
-                if len(block) == 0:
-                    break
-                decrypted_key+=cipher.decrypt(block).decode("utf-8")
+                    block = infile.read(block_size)
+                    if len(block) == 0:
+                        break
+                    decrypted_key+=cipher.decrypt(block).decode("utf-8")
+
         return RSA.import_key(decrypted_key)
 
 
@@ -82,8 +83,12 @@ class ChooseKeyNameView(BasicView):
             messagebox.showerror("Brak hasła",
                                  "Podaj hasło do klucza publicznego.")
             return
-        decrypted_key = self.decrypt_key(password, path_to_selected_key)
-
+        try:
+            decrypted_key = self.decrypt_key(password, path_to_selected_key)
+        except UnicodeDecodeError:
+            messagebox.showerror("Błędne hasło",
+                                 "Podano błędne hasło.")
+            return
         if not(name:=self.entry_name.get()):
             messagebox.showerror("Brak nazwy",
                                  "Podaj nazwę użytkownika, aby kontynuować.")

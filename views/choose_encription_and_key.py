@@ -53,6 +53,10 @@ class ChooseEncriptionAndKey(BasicView):
                 self.session.close_broadcast()
 
     def display_widgets(self):
+        if self.user_address:
+            label = tk.Label(self.root, image=self.images['back_arrow'], bd=0)
+            label.place(x=0, y=0)
+            label.bind("<Button-1>", self.switch_to_wait_for_chat)
         label = tk.Label(self.root, font=self.BUTTON_FONT, text=f"Wybierz klucz publiczny użytkownika {self.user_name}", bg=self.BACKGROUND_COLOR)
         label.pack(pady=self.PAD_Y)
         self.place_for_keys = tk.Frame(self.root, width=300, height=200)
@@ -89,10 +93,6 @@ class ChooseEncriptionAndKey(BasicView):
         ChatView(self.root, self.private_key, self.name, self.images, self.session, self.public_keys, self.private_keys)
 
     def switch_to_wait_for_chat(self):
-        if self.waiting_thread:
-            self.waiting_thread.stop()
-        if self.checking_thread:
-            self.checking_thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
         wait_for_chat_module.WaitForChatView(self.root, self.private_key, self.name, self.images, self.public_keys, self.private_keys, self.session)
@@ -107,8 +107,8 @@ class ChooseEncriptionAndKey(BasicView):
     def display_wait(self):
         for widget in self.root.winfo_children():
             widget.destroy()
-        label = tk.Label(self.root, font=self.MAX_FONT, text="Trwa oczekiwanie na drugą osobę", background=self.BACKGROUND_COLOR)
-        label.place(anchor=tk.CENTER)
+        label = tk.Label(self.root, font=self.BUTTON_FONT, text="Trwa oczekiwanie na drugą osobę", background=self.BACKGROUND_COLOR)
+        label.pack(pady=self.PAD_Y)
 
     def start_wait_for_other_user(self):
         if self.user_address:

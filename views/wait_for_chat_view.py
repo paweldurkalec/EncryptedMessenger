@@ -47,12 +47,12 @@ class WaitForChatView(BasicView):
         self.place_for_users.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
         self.display_online_users()
 
-    def switch_to_choose_key_view(self):
+    def switch_to_choose_key_view(self, event=None):
         for widget in self.root.winfo_children():
             widget.destroy()
         self.thread.stop()
         self.session.close_broadcast()
-        choose_key_module.ChooseKeyNameKey(self.root, self.images, self.public_keys, self.private_keys)
+        choose_key_module.ChooseKeyNameView(self.root, self.images, self.public_keys, self.private_keys)
 
     def initialize_session(self, private_key, name):
         session = Session(name, private_key)
@@ -72,7 +72,6 @@ class WaitForChatView(BasicView):
     def check_users_actions(self, stop_event, **kwargs):
         while not stop_event.is_set():
             if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE and self.popup==False:
-                print("Dostalem zapke")
                 if self.answer_to_invitation():
                     self.root.after(0, lambda: self.switch_to_choose_encription(self.session.connected_user.name))
                     return
