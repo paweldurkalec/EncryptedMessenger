@@ -47,6 +47,13 @@ class ChatView(BasicView):
             self.root.destroy()
 
     def display_widgets(self):
+        connected_user = tk.Label(self.root, bg=self.BACKGROUND_COLOR, font=self.BUTTON_FONT, text=f"Chat z użytkownikiem {self.session.connected_user.name}")
+        connected_user.pack()
+
+        self.root.update()
+        label_width = connected_user.winfo_width()
+        self.status = tk.Label(self.root, image=self.images['green'], bd=0)
+        self.status.place(x=self.WIDTH/2 + label_width/2,y=0)
         self.place_for_text_messages = tk.Text(self.root)
         self.place_for_text_messages.place(x=20, y=50, width=300, height=400)
         self.place_for_file_messages = tk.Text(self.root)
@@ -118,15 +125,13 @@ class ChatView(BasicView):
             self.semaphore.release()
 
     def finish_chat(self):
-        #change status of user
+        self.status.configure(image=self.images["red"])
         self.thread.stop()
 
     def chat_with_connected_user(self, stop_event, **kwargs):
         while not stop_event.is_set():
             if self.canvas:
                 for file in reversed(self.session.files):
-                    print(len(self.session.files))
-                    print(file.percentage)
                     if file.type == 'SENT':
                         if file.percentage == 100:
                             self.canvas.destroy()

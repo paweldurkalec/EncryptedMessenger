@@ -8,6 +8,8 @@ class BasicView:
     BUTTON_FONT = ("Helvetica", 14)
     PAD_Y = 40
     BACKGROUND_COLOR = 'white'
+    WIDTH = 800
+    HEIGHT = 600
     WORKING_DIR = Path(os.getcwd())
     PRIVATE_KEY_DIR = os.path.join(Path(os.getcwd()),"ssh_private")
     PUBLIC_KEY_DIR = os.path.join(Path(os.getcwd()), "ssh_public")

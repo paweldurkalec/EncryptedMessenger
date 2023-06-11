@@ -71,6 +71,7 @@ class WaitForChatView(BasicView):
 
     def check_users_actions(self, stop_event, **kwargs):
         while not stop_event.is_set():
+            print(len(self.online_users))
             if self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE and self.popup==False:
                 if self.answer_to_invitation():
                     self.root.after(0, lambda: self.switch_to_choose_encription(self.session.connected_user.name))

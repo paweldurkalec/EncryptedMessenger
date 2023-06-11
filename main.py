@@ -13,10 +13,10 @@ def load_images():
     back_arrow = back_arrow.resize((50, 50), Image.ANTIALIAS)
     back_arrow = ImageTk.PhotoImage(back_arrow)
     red = Image.open("images/red.png")
-    red = red.resize((10, 10), Image.ANTIALIAS)
+    red = red.resize((20, 20), Image.ANTIALIAS)
     red = ImageTk.PhotoImage(red)
     green = Image.open("images/green.png")
-    green = green.resize((10, 10), Image.ANTIALIAS)
+    green = green.resize((20, 20), Image.ANTIALIAS)
     green = ImageTk.PhotoImage(green)
     images = {"back_arrow": back_arrow, "red":red,"green":green}
     return images

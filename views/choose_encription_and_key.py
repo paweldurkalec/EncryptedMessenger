@@ -113,7 +113,8 @@ class ChooseEncriptionAndKey(BasicView):
     def start_wait_for_other_user(self):
         if self.user_address:
             public_key = self.get_public_key()
-            self.session.send_init(self.user_name,self.user_address, public_key=public_key)
+            block_cipher = self.encryption_type_var.get()
+            self.session.send_init(self.user_name,self.user_address, public_key=public_key, block_cipher=block_cipher)
             self.waiting_thread.thread.start()
             self.display_wait()
         else:
