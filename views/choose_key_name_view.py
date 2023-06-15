@@ -38,7 +38,7 @@ class ChooseKeyNameView(BasicView):
         self.place_for_keys.place(x=50,y=100)
         label = tk.Label(self.root, font=self.BUTTON_FONT, text="Wpisz hasło", background=self.BACKGROUND_COLOR)
         label.place(x=400, y=70)
-        self.entry_password = tk.Entry(self.root, font=self.BUTTON_FONT, width=25)
+        self.entry_password = tk.Entry(self.root, font=self.BUTTON_FONT, width=25, show='*')
         self.entry_password.place(x=400, y=100)
         label = tk.Label(self.root, font=self.BUTTON_FONT, text="Wpisz nazwe użytkownika", background=self.BACKGROUND_COLOR)
         label.place(x=400, y=170)

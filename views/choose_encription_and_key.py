@@ -16,12 +16,14 @@ class ChooseEncriptionAndKey(BasicView):
 
     def __init__(self, root, private_key, name, images, session, user_name, public_keys, private_keys, user_address):
         super(ChooseEncriptionAndKey, self).__init__(root, images, public_keys, private_keys)
+        self.send_invitation = False
         self.user_address = user_address
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.checking_thread = None
-        if not user_address:
-            self.checking_thread = StoppableThread(self.wait_for_other_user)
         self.session = session
+        if not self.user_address:
+            self.checking_thread = StoppableThread(self.check_for_timeout)
+            self.checking_thread.thread.start()
         self.user_name = user_name
         self.private_key = private_key
         self.name = name
@@ -33,6 +35,7 @@ class ChooseEncriptionAndKey(BasicView):
         self.waiting_thread = None
         if self.user_address:
             self.waiting_thread = StoppableThread(self.wait_for_other_user)
+            self.waiting_thread.thread.start()
 
     def check_for_timeout(self, stop_event):
         while not stop_event.is_set():
@@ -62,13 +65,14 @@ class ChooseEncriptionAndKey(BasicView):
         self.place_for_keys = tk.Frame(self.root, width=300, height=200)
         self.place_for_keys.pack_propagate(0)
         self.place_for_keys.pack(pady=self.PAD_Y)
-        private_type = tk.Radiobutton(self.root, background=self.BACKGROUND_COLOR, font=self.BUTTON_FONT,
-                                      variable=self.encryption_type_var, text="ECB", value="private")
-        private_type.pack(pady=self.PAD_Y/3)
-        public_type = tk.Radiobutton(self.root, font=self.BUTTON_FONT, variable=self.encryption_type_var,
-                                     background=self.BACKGROUND_COLOR, text="CBC",
-                                     value="public")
-        public_type.pack(pady=self.PAD_Y/3)
+        if self.user_address:
+            ecb_button = tk.Radiobutton(self.root, background=self.BACKGROUND_COLOR, font=self.BUTTON_FONT,
+                                          variable=self.encryption_type_var, text="ECB", value="ECB")
+            ecb_button.pack(pady=self.PAD_Y/3)
+            cbc_button = tk.Radiobutton(self.root, font=self.BUTTON_FONT, variable=self.encryption_type_var,
+                                         background=self.BACKGROUND_COLOR, text="CBC",
+                                         value="CBC")
+            cbc_button.pack(pady=self.PAD_Y/3)
         button_key = tk.Button(self.root, font=self.BUTTON_FONT, text="Połącz",
                                command=self.start_wait_for_other_user, width=20)
         button_key.pack(pady=self.PAD_Y/3)
@@ -93,6 +97,10 @@ class ChooseEncriptionAndKey(BasicView):
         ChatView(self.root, self.private_key, self.name, self.images, self.session, self.public_keys, self.private_keys)
 
     def switch_to_wait_for_chat(self):
+        if self.waiting_thread:
+            self.waiting_thread.stop()
+        if self.checking_thread:
+            self.checking_thread.stop()
         for widget in self.root.winfo_children():
             widget.destroy()
         wait_for_chat_module.WaitForChatView(self.root, self.private_key, self.name, self.images, self.public_keys, self.private_keys, self.session)
@@ -101,8 +109,13 @@ class ChooseEncriptionAndKey(BasicView):
         while not stop_event.is_set():
             if self.session.status == SessionStatus.ESTABLISHED:
                 self.root.after(0, lambda: self.switch_to_chat())
-            if self.session.status == SessionStatus.UNESTABLISHED:
+                return
+            elif self.session.status == SessionStatus.UNESTABLISHED and self.send_invitation==True:
                 self.root.after(0, lambda: self.switch_to_wait_for_chat())
+                return
+            elif self.session.status == SessionStatus.WAITING_FOR_ACCEPTANCE:
+                self.session.decline()
+                return
 
     def display_wait(self):
         for widget in self.root.winfo_children():
@@ -115,7 +128,7 @@ class ChooseEncriptionAndKey(BasicView):
             public_key = self.get_public_key()
             block_cipher = self.encryption_type_var.get()
             self.session.send_init(self.user_name,self.user_address, public_key=public_key, block_cipher=block_cipher)
-            self.waiting_thread.thread.start()
+            self.send_invitation = True
             self.display_wait()
         else:
             public_key = self.get_public_key()

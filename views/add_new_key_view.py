@@ -37,7 +37,7 @@ class AddNewKeyView(BasicView):
         self.entry_name.place(x=50, y=200)
         label = tk.Label(self.root, font=self.BUTTON_FONT, text="Wpisz hasło", background=self.BACKGROUND_COLOR)
         label.place(x=450, y=150)
-        self.entry_password = tk.Entry(self.root, font=self.BUTTON_FONT,width=25)
+        self.entry_password = tk.Entry(self.root, font=self.BUTTON_FONT,width=25,  show='*')
         self.entry_password.place(x=400, y=200)
         private_type = tk.Radiobutton(self.root, background=self.BACKGROUND_COLOR,font=self.BUTTON_FONT, variable=self.key_type_var, text="Klucz prywatny", value="private")
         private_type.place(x=50, y=300)

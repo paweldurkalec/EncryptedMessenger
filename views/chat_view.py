@@ -32,6 +32,8 @@ class ChatView(BasicView):
         self.file_label = None
         self.progress_bar = None
         self.text_input = None
+        self.send_file_button = None
+        self.send_text_button = None
         self.displayed_text_messages = []
         self.displayed_file_messages = []
         self.semaphore = Semaphore(1)
@@ -42,7 +44,8 @@ class ChatView(BasicView):
     def on_closing(self):
         if messagebox.askokcancel("Wyjście", "Czy na pewno chcesz zamknąć program?"):
             self.thread.stop()
-            self.session.end()
+            if self.session.status == SessionStatus.ESTABLISHED:
+                self.session.end()
             self.session.close_broadcast()
             self.root.destroy()
 
@@ -68,12 +71,12 @@ class ChatView(BasicView):
         self.place_for_file_messages.config(yscrollcommand=scrollbar_file.set)
         self.text_input = tk.Entry(self.root, width=30)
         self.text_input.place(x=20, y=500, height=35)
-        send_button = tk.Button(self.root, text='Wyslij', command=self.send_text_message, font=self.BUTTON_FONT)
-        send_button.place(x=320, y=500)
+        self.send_text_button = tk.Button(self.root, text='Wyslij', command=self.send_text_message, font=self.BUTTON_FONT)
+        self.send_text_button.place(x=320, y=500)
         choose_file_button = tk.Button(self.root, font=self.BUTTON_FONT, text="Wybierz plik", command=self.choose_file,width=20)
         choose_file_button.place(x=400,y=500)
-        send_file_button = tk.Button(self.root, text='Wyslij', command=self.send_file, font=self.BUTTON_FONT)
-        send_file_button.place(x=650, y=500)
+        self.send_file_button = tk.Button(self.root, text='Wyslij', command=self.send_file, font=self.BUTTON_FONT)
+        self.send_file_button.place(x=650, y=500)
         tk.Button(self.root, text="Zamknij czat", command=self.switch_to_wait_for_chat).place(x=0,y=0)
 
     def choose_file(self):
@@ -121,24 +124,28 @@ class ChatView(BasicView):
             self.semaphore.acquire()
             self.display_file_message(filename, self.MY_COLOR)
             self.session.send_file(filename)
-            self.displayed_file_messages = self.session.files
+            self.displayed_file_messages = self.session.files.copy()
             self.semaphore.release()
 
     def finish_chat(self):
         self.status.configure(image=self.images["red"])
         self.thread.stop()
+        self.send_file_button.destroy()
+        self.send_text_button.destroy()
 
     def chat_with_connected_user(self, stop_event, **kwargs):
         while not stop_event.is_set():
             if self.canvas:
+                all_sent = True
                 for file in reversed(self.session.files):
                     if file.type == 'SENT':
-                        if file.percentage == 100:
-                            self.canvas.destroy()
-                            self.canvas = None
-                        else:
+                        if file.percentage != 100:
+                            all_sent = False
                             self.canvas.delete("all")
                             self.canvas.create_rectangle(0, 0, file.percentage, 30, fill="blue")
+                if all_sent:
+                    self.canvas.destroy()
+                    self.canvas = None
             if self.receiving_file and self.receiving_file.percentage == 100:
                 self.semaphore.acquire()
                 self.display_file_message(self.receiving_file.file_name, self.CONNECTED_USER_COLOR)
